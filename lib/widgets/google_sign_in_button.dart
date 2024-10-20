@@ -1,5 +1,8 @@
+// widgets/google_sign_in_button.dart
+
 import 'package:flutter/material.dart';
 
+/// GoogleSignInButton is a custom widget that initiates Google Sign-In when pressed.
 class GoogleSignInButton extends StatelessWidget {
   final VoidCallback onPressed;
 

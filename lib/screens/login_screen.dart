@@ -1,9 +1,14 @@
+// screens/login_screen.dart
+
+import 'package:committr_web/widgets/loading_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/google_sign_in_button.dart';
 import '../services/auth_service.dart';
 import '../services/log_service.dart';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:provider/provider.dart';
+import 'main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,25 +18,50 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final AuthService _authService = AuthService();
   User? _user;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     LogService.info("Login screen initialized");
-    _user = _authService.getCurrentUser();
-    LogService.info("Current user: $_user");
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      setState(() {
+        _user = authService.getCurrentUser();
+        LogService.info("Current user: $_user");
+      });
+    });
   }
 
+  /// Handles the Google Sign-In process and navigates to the MainScreen upon success.
   Future<void> _signInWithGoogle() async {
-    LogService.info("Attempting Google Sign-In from Login Screen");
-    User? user = await _authService.signInWithGoogle();
-    LogService.info("User signed in: $user");
     setState(() {
+      _isLoading = true;
+    });
+    LogService.info("Attempting Google Sign-In from Login Screen");
+    final authService = Provider.of<AuthService>(context, listen: false);
+    User? user = await authService.signInWithGoogle();
+    setState(() {
+      _isLoading = false;
       _user = user;
       LogService.info("User state updated: $_user");
     });
+    if (user != null) {
+      LogService.info("User signed in: $user");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Signed in successfully')),
+      );
+      // Navigate to MainScreen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
+    } else {
+      LogService.warning("Google Sign-In failed or was canceled");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google Sign-In failed or was canceled')),
+      );
+    }
   }
 
   @override
@@ -79,51 +109,63 @@ class _LoginScreenState extends State<LoginScreen> {
         buttonWidth = minButtonWidth;
       }
     }
+
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: const Color.fromARGB(255, 159, 232, 112),
-        child: Column(
-          children: [
-            Expanded(
-              child: Align(
-                alignment: textAlignment,
-                child: Padding(
-                  padding: titlePadding,
-                  child: Container(
-                    constraints: BoxConstraints(maxWidth: maxTitleWidth),
-                    child: AutoSizeText(
-                      'Track.\nCommit.\nAchieve.',
-                      textAlign: TextAlign.left,
-                      style: TextStyle(
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins',
-                        height: 1.1,
-                        color: const Color.fromARGB(255, 8, 52, 0),
+      body: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: const Color.fromARGB(255, 159, 232, 112),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: textAlignment,
+                    child: Padding(
+                      padding: titlePadding,
+                      child: Container(
+                        constraints: BoxConstraints(maxWidth: maxTitleWidth),
+                        child: AutoSizeText(
+                          'Track.\nCommit.\nAchieve.',
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Poppins',
+                            height: 1.1,
+                            color: const Color.fromARGB(255, 8, 52, 0),
+                          ),
+                          maxLines: 3,
+                          minFontSize: 10,
+                          stepGranularity: stepGranularity,
+                        ),
                       ),
-                      maxLines: 3,
-                      minFontSize: 10,
-                      stepGranularity: stepGranularity,
                     ),
                   ),
                 ),
-              ),
-            ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: buttonWidth,
-                  child: GoogleSignInButton(
-                    onPressed: _signInWithGoogle,
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      width: buttonWidth,
+                      child: GoogleSignInButton(
+                        onPressed: _signInWithGoogle,
+                      ),
+                    ),
                   ),
                 ),
+              ],
+            ),
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.white.withOpacity(1),
+              child: const Center(
+                child: LoadingOverlay(),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
