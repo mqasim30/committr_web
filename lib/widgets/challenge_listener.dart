@@ -1,11 +1,11 @@
 // lib/widgets/challenge_listener.dart
 
+import 'dart:async'; // Import for Timer
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/log_service.dart';
 import '../providers/challenge_provider.dart';
 import '../services/challenge_service.dart';
-import '../models/challenge.dart';
 
 class ChallengeListener extends StatefulWidget {
   const ChallengeListener({Key? key}) : super(key: key);
@@ -18,6 +18,9 @@ class _ChallengeListenerState extends State<ChallengeListener> {
   late final ChallengeProvider _challengeProvider;
   late final ChallengeService _challengeService;
 
+  Timer? _debounceTimer;
+  final Duration _debounceDuration = const Duration(milliseconds: 500);
+
   @override
   void initState() {
     super.initState();
@@ -27,45 +30,51 @@ class _ChallengeListenerState extends State<ChallengeListener> {
     _setupListeners();
   }
 
-  /// Sets up real-time listeners for challenges
+  /// Sets up real-time listeners for challenges with debouncing
   void _setupListeners() {
     // Listener for when a new challenge is added
     _challengeService.challengesRef.onChildAdded.listen((event) {
-      if (event.snapshot.value != null) {
-        Challenge newChallenge = Challenge.fromMap(
-            Map<String, dynamic>.from(event.snapshot.value as Map));
-        LogService.info("New Challenge Added: ${newChallenge.challengeTitle}");
-        _challengeProvider.updateChallenges(); // Update provider data
-      }
+      _handleChallengeEvent("childAdded", event);
     }, onError: (error) {
       LogService.error("Error in childAdded listener: $error");
     });
 
     // Listener for when a challenge is changed
     _challengeService.challengesRef.onChildChanged.listen((event) {
-      if (event.snapshot.value != null) {
-        Challenge updatedChallenge = Challenge.fromMap(
-            Map<String, dynamic>.from(event.snapshot.value as Map));
-        LogService.info(
-            "Challenge Updated: ${updatedChallenge.challengeTitle}");
-        _challengeProvider.updateChallenges(); // Update provider data
-      }
+      _handleChallengeEvent("childChanged", event);
     }, onError: (error) {
       LogService.error("Error in childChanged listener: $error");
     });
 
     // Listener for when a challenge is removed
     _challengeService.challengesRef.onChildRemoved.listen((event) {
-      if (event.snapshot.value != null) {
-        Challenge removedChallenge = Challenge.fromMap(
-            Map<String, dynamic>.from(event.snapshot.value as Map));
-        LogService.info(
-            "Challenge Removed: ${removedChallenge.challengeTitle}");
-        _challengeProvider.updateChallenges(); // Update provider data
-      }
+      _handleChallengeEvent("childRemoved", event);
     }, onError: (error) {
       LogService.error("Error in childRemoved listener: $error");
     });
+  }
+
+  /// Handles challenge events with debouncing
+  void _handleChallengeEvent(String eventType, event) {
+    if (event.snapshot.value != null) {
+      // Log the event
+      LogService.info("Challenge event: $eventType");
+
+      // Cancel any existing timer
+      if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+
+      // Start a new debounce timer
+      _debounceTimer = Timer(_debounceDuration, () {
+        LogService.info("Debounced updateChallenges call");
+        _challengeProvider.updateChallenges();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   @override
