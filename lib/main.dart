@@ -1,7 +1,6 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'services/log_service.dart';
@@ -11,13 +10,12 @@ import 'services/ip_service.dart';
 import 'services/geolocation_service.dart';
 import 'services/challenge_service.dart';
 import 'services/user_service.dart';
-import 'services/challenge_categorization.dart';
 import 'providers/challenge_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets/loading_overlay.dart';
-import 'widgets/challenge_listener.dart';
+import 'services/firebase_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,18 +23,7 @@ Future<void> main() async {
   LogService.info("Environment variables loaded");
 
   try {
-    await Firebase.initializeApp(
-      options: FirebaseOptions(
-        apiKey: dotenv.env['FIREBASE_API_KEY'] ?? '',
-        authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN'] ?? '',
-        databaseURL: dotenv.env['FIREBASE_DATABASE_URL'] ?? '',
-        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? '',
-        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '',
-        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '',
-        appId: dotenv.env['FIREBASE_APP_ID'] ?? '',
-        measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID'],
-      ),
-    );
+    await FirebaseService.initializeFirebase();
 
     LogService.info("Firebase initialized successfully");
     runApp(
@@ -51,13 +38,13 @@ Future<void> main() async {
           Provider<GeolocationService>(
             create: (_) => GeolocationService(),
           ),
-          ProxyProvider3<DatabaseService, IPService, GeolocationService,
-              AuthService>(
-            update: (_, databaseService, ipService, geolocationService, __) =>
-                AuthService(
-              databaseService: databaseService,
-              ipService: ipService,
-              geolocationService: geolocationService,
+          Provider<AuthService>(
+            create: (context) => AuthService(
+              databaseService:
+                  Provider.of<DatabaseService>(context, listen: false),
+              ipService: Provider.of<IPService>(context, listen: false),
+              geolocationService:
+                  Provider.of<GeolocationService>(context, listen: false),
             ),
           ),
           Provider<ChallengeService>(
@@ -66,15 +53,10 @@ Future<void> main() async {
           Provider<UserService>(
             create: (_) => UserService(),
           ),
-          Provider<ChallengeCategorization>(
-            create: (context) => ChallengeCategorization(
-              Provider.of<ChallengeService>(context, listen: false),
-              Provider.of<UserService>(context, listen: false),
-            ),
-          ),
           ChangeNotifierProvider<ChallengeProvider>(
             create: (context) => ChallengeProvider(
-              Provider.of<ChallengeCategorization>(context, listen: false),
+              Provider.of<ChallengeService>(context, listen: false),
+              Provider.of<UserService>(context, listen: false),
             ),
           ),
         ],
@@ -99,7 +81,7 @@ class ChallengeWebApp extends StatelessWidget {
       title: 'Your App Name',
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
-      themeMode: ThemeMode.light, // Force light theme to avoid dark backgrounds
+      themeMode: ThemeMode.light,
       home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
     );
@@ -121,7 +103,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _authService = Provider.of<AuthService>(context, listen: false);
-    _checkAuthState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuthState();
+    });
   }
 
   Future<void> _checkAuthState() async {
@@ -131,39 +115,65 @@ class _AuthWrapperState extends State<AuthWrapper> {
       bool updateResult = await _authService.updateUserProfileForUser(user.uid);
       if (updateResult) {
         LogService.info("User profile updated successfully for ${user.uid}");
+        // Fetch challenges after user profile is updated
+        await Provider.of<ChallengeProvider>(context, listen: false)
+            .initialize();
         // Navigate to MainScreen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const MainScreenWithListener()),
+            );
+          }
+        });
       } else {
         LogService.error("Failed to update user profile for ${user.uid}");
-        // Optionally, show an error or navigate to LoginScreen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
+        // Navigate to LoginScreen
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+            );
+          }
+        });
       }
     } else {
       LogService.info("No user is signed in. Navigating to LoginScreen.");
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        }
+      });
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    // Removed setState() to prevent the error
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show a loading indicator while checking auth state
+    // Use your LoadingOverlay widget
     return Scaffold(
       body: Stack(
         children: [
-          if (_isLoading)
-            const LoadingOverlay(), // Use the centralized LoadingOverlay
-          if (!_isLoading)
-            const ChallengeListener(), // Start listening after loading
+          if (_isLoading) const LoadingOverlay(), // Using your LoadingOverlay
+        ],
+      ),
+    );
+  }
+}
+
+class MainScreenWithListener extends StatelessWidget {
+  const MainScreenWithListener({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Include ChallengeListener at the root of your app
+    return Scaffold(
+      body: Stack(
+        children: [
+          const MainScreen(),
         ],
       ),
     );
@@ -175,6 +185,8 @@ class FirebaseErrorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    LogService.error(
+        "FirebaseErrorApp displayed due to initialization failure.");
     return MaterialApp(
       home: Scaffold(
         body: Center(

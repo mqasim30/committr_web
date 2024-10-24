@@ -15,6 +15,7 @@ class Challenge {
   final String platform;
   final int challengeStartTimestamp;
   final int challengeEndTimestamp;
+  final List<String> challengeParticipantsId; // New Field
 
   Challenge({
     required this.challengeId,
@@ -31,6 +32,7 @@ class Challenge {
     required this.platform,
     required this.challengeStartTimestamp,
     required this.challengeEndTimestamp,
+    required this.challengeParticipantsId, // Updated Constructor
   });
 
   /// Factory method to create a Challenge from a map
@@ -52,6 +54,8 @@ class Challenge {
       platform: map['Platform'] ?? 'Web',
       challengeStartTimestamp: map['ChallengeStartTimestamp'] ?? 0,
       challengeEndTimestamp: map['ChallengeEndTimestamp'] ?? 0,
+      challengeParticipantsId: List<String>.from(
+          map['ChallengeParticipantsId'] ?? []), // Parsing New Field
     );
   }
 
@@ -72,6 +76,7 @@ class Challenge {
       'Platform': platform,
       'ChallengeStartTimestamp': challengeStartTimestamp,
       'ChallengeEndTimestamp': challengeEndTimestamp,
+      'ChallengeParticipantsId': challengeParticipantsId,
     };
   }
 }

@@ -11,12 +11,12 @@ class LoadingOverlay extends StatelessWidget {
   final Color? indicatorColor;
 
   const LoadingOverlay({
-    Key? key,
+    super.key,
     this.opacity = 255,
     this.overlayColor,
     this.indicatorSize = 50.0,
     this.indicatorColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

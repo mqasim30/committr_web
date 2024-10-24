@@ -1,4 +1,4 @@
-// services/auth_service.dart
+// lib/services/auth_service.dart
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,7 +8,7 @@ import '../models/user_profile.dart';
 import 'ip_service.dart';
 import 'geolocation_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_database/firebase_database.dart'; // For ServerValue.timestamp
+import 'package:firebase_database/firebase_database.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -102,14 +102,12 @@ class AuthService {
       String platform = "Web"; // Adjust if you have different platforms
 
       // Check if user profile already exists
-      UserProfile? existingProfile;
-      bool profileExists =
-          await _databaseService.readUserProfileAsync(userId, (profile) {
-        existingProfile = profile;
-        LogService.info("User profile exists for $userId");
-      });
+      UserProfile? existingProfile =
+          await _databaseService.readUserProfile(userId);
 
-      if (profileExists && existingProfile != null) {
+      int currentTimestamp = DateTime.now().millisecondsSinceEpoch;
+
+      if (existingProfile != null) {
         // Prepare updates
         Map<String, dynamic> updates = {
           'UserIP': ip,
@@ -129,7 +127,6 @@ class AuthService {
         }
       } else {
         // Create a new user profile
-        int currentTimestamp = DateTime.now().millisecondsSinceEpoch;
         UserProfile userProfile = UserProfile(
           userId: userId,
           userName: _auth.currentUser?.displayName ?? '',
@@ -138,13 +135,13 @@ class AuthService {
           userCountry: country,
           userJoinDate: currentTimestamp,
           userActiveDate: currentTimestamp,
-          userChallenges: {}, // Initialize as empty or fetch existing challenges if needed
-          userInvited: 0, // Initialize or fetch from existing data
-          userInvitedBy: '', // Initialize or fetch from existing data
-          userSource: 'FlutterWeb', // Adjust based on your sources
-          userStatus: 'Active', // Adjust based on your logic
+          userChallenges: {},
+          userInvited: 0,
+          userInvitedBy: '',
+          userSource: 'FlutterWeb',
+          userStatus: 'Active',
           platform: platform,
-          amountWon: 0.0, // Initialize or fetch from existing data
+          amountWon: 0.0,
         );
 
         bool writeResult =
@@ -191,4 +188,9 @@ class AuthService {
     }
     return user;
   }
+
+  /// Getter for the currently signed-in [User].
+  ///
+  /// Returns `null` if no user is signed in.
+  User? get currentUser => _auth.currentUser;
 }

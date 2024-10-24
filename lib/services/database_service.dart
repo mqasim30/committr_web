@@ -1,4 +1,4 @@
-// services/database_service.dart
+// lib/services/database_service.dart
 
 import 'package:firebase_database/firebase_database.dart';
 import '../models/user_profile.dart';
@@ -6,6 +6,8 @@ import 'log_service.dart';
 
 class DatabaseService {
   final DatabaseReference _databaseRef = FirebaseDatabase.instance.ref();
+
+  DatabaseService();
 
   /// Writes a [UserProfile] to the Realtime Database.
   Future<bool> writeUserProfileAsync(UserProfile userProfile) async {
@@ -37,11 +39,10 @@ class DatabaseService {
   }
 
   /// Reads a [UserProfile] from the Realtime Database.
-  Future<bool> readUserProfileAsync(
-      String userId, Function(UserProfile) onSuccess) async {
+  Future<UserProfile?> readUserProfile(String userId) async {
     if (userId.isEmpty) {
       LogService.error("UserId is null or empty. Cannot read from database.");
-      return false;
+      return null;
     }
 
     try {
@@ -55,16 +56,15 @@ class DatabaseService {
             Map<dynamic, dynamic>.from(dataSnapshot.value as Map);
         LogService.info("Retrieved user profile for $userId: $data");
         UserProfile userProfile = UserProfile.fromMap(data);
-        onSuccess(userProfile);
-        return true;
+        return userProfile;
       } else {
         LogService.warning("User profile not found for UserId: $userId");
-        return false;
+        return null;
       }
     } catch (e, stackTrace) {
       LogService.error(
           "Failed to read user profile for $userId: $e", e, stackTrace);
-      return false;
+      return null;
     }
   }
 
