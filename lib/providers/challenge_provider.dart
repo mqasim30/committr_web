@@ -8,8 +8,8 @@ import '../models/user_challenge_detail.dart';
 import '../services/challenge_service.dart';
 import '../services/user_service.dart';
 import '../services/log_service.dart';
-import '../services/challenge_service.dart'; // For ChallengeEvent and ChallengeEventType
-import '../services/user_service.dart'; // For UserChallengeEvent and UserChallengeEventType
+// For ChallengeEvent and ChallengeEventType
+// For UserChallengeEvent and UserChallengeEventType
 
 class ChallengeProvider extends ChangeNotifier {
   List<Challenge> _availableChallenges = [];

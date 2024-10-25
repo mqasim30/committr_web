@@ -1,11 +1,9 @@
 // lib/screens/oath_screen.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:file_selector/file_selector.dart'; // Use file_selector
-import '../services/user_service.dart';
-import '../services/log_service.dart'; // Import LogService
+import 'package:file_selector/file_selector.dart';
+import '../services/log_service.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class OathScreen extends StatefulWidget {
@@ -13,10 +11,10 @@ class OathScreen extends StatefulWidget {
   final String challengeId;
 
   const OathScreen({
-    Key? key,
+    super.key,
     required this.userId,
     required this.challengeId,
-  }) : super(key: key);
+  });
 
   @override
   _OathScreenState createState() => _OathScreenState();
@@ -29,8 +27,6 @@ class _OathScreenState extends State<OathScreen> {
   XFile? _selectedImage; // Changed from PlatformFile to XFile
   Uint8List? _selectedImageBytes; // Store image bytes
   bool _isLoading = false;
-
-  final UserService _userService = UserService();
 
   /// Picks an image from the device (supports web, mobile, and desktop)
   Future<void> _pickImage() async {

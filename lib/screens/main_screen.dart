@@ -11,7 +11,7 @@ import '../services/auth_service.dart';
 import '../services/log_service.dart';
 import 'login_screen.dart';
 import 'oath_screen.dart'; // Import OathScreen
-import 'package:flutter/foundation.dart'; // Import for kIsWeb if needed
+// Import for kIsWeb if needed
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

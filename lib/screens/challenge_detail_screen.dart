@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/challenge.dart';
-import '../models/user_challenge_detail.dart';
 import '../widgets/loading_overlay.dart';
 import 'pledge_amount_selection_screen.dart';
 import 'oath_screen.dart';

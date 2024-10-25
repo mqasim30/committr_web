@@ -69,9 +69,7 @@ class UserService {
             // Extract challengeId safely
             String? challengeId = detail.userChallengeId;
 
-            if (challengeId != null &&
-                challengeId is String &&
-                challengeId.isNotEmpty) {
+            if (challengeId.isNotEmpty) {
               userChallenges[challengeId] = detail;
             } else {
               LogService.error(
