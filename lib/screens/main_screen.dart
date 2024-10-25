@@ -10,8 +10,9 @@ import '../widgets/loading_overlay.dart';
 import '../services/auth_service.dart';
 import '../services/log_service.dart';
 import 'login_screen.dart';
-import 'oath_screen.dart'; // Import OathScreen
-// Import for kIsWeb if needed
+import 'oath_screen.dart';
+import 'challenge_progress_screen.dart';
+import 'submission_screen.dart'; // Import SubmissionScreen
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -106,7 +107,10 @@ class _MainScreenState extends State<MainScreen> {
                             return ListTile(
                               title: Text(challenge.challengeTitle),
                               subtitle: Text(
-                                  'Duration: ${challenge.challengeDurationDays} days\nCategory: ${challenge.challengeCategory}'),
+                                'Duration: ${challenge.challengeDurationDays} days\n'
+                                'Participants: ${challenge.challengeNumberParticipants}\n'
+                                'Pot Size: \$${challenge.challengePotSize}',
+                              ),
                               trailing: ElevatedButton(
                                 onPressed: () {
                                   Navigator.push(
@@ -158,7 +162,10 @@ class _MainScreenState extends State<MainScreen> {
                             return ListTile(
                               title: Text(challenge.challengeTitle),
                               subtitle: Text(
-                                  'Duration: ${challenge.challengeDurationDays} days\nPot Size: \$${challenge.challengePotSize}\nParticipants: ${challenge.challengeNumberParticipants}'),
+                                'Duration: ${challenge.challengeDurationDays} days\n'
+                                'Pot Size: \$${challenge.challengePotSize}\n'
+                                'Participants: ${challenge.challengeNumberParticipants}',
+                              ),
                               trailing: ElevatedButton(
                                 onPressed: () {
                                   if (userChallengeDetail != null &&
@@ -177,16 +184,47 @@ class _MainScreenState extends State<MainScreen> {
                                         ),
                                       ),
                                     );
-                                  } else {
-                                    // Navigate to Challenge Detail Screen without passing userChallengeDetail
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            ChallengeDetailScreen(
-                                          challenge: challenge,
+                                  } else if (userChallengeDetail != null &&
+                                      userChallengeDetail.isOathTaken) {
+                                    // Check the userChallengeStatus
+                                    if (userChallengeDetail
+                                            .userChallengeStatus ==
+                                        'In Progress') {
+                                      // Navigate to Challenge Progress Screen
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              ChallengeProgressScreen(
+                                            challenge: challenge,
+                                          ),
                                         ),
-                                      ),
+                                      );
+                                    } else if (userChallengeDetail
+                                            .userChallengeStatus ==
+                                        'Submission') {
+                                      // Navigate to Submission Screen
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              SubmissionScreen(
+                                            userId: Provider.of<AuthService>(
+                                                    context,
+                                                    listen: false)
+                                                .currentUser!
+                                                .uid,
+                                            challengeId: challenge.challengeId,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    // User has not joined the challenge
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'You have not joined this challenge yet.')),
                                     );
                                   }
                                 },

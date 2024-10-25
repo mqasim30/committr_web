@@ -1,7 +1,7 @@
 // lib/services/challenge_service.dart
 
 import 'package:firebase_database/firebase_database.dart';
-import 'package:rxdart/rxdart.dart'; // Import for stream merging
+import 'package:rxdart/rxdart.dart';
 import '../models/challenge.dart';
 import '../services/log_service.dart';
 
@@ -56,6 +56,26 @@ class ChallengeService {
     } catch (error) {
       LogService.error("Error fetching challenges: $error");
       return [];
+    }
+  }
+
+  /// Fetches a single challenge by its ID
+  Future<Challenge?> fetchChallengeById(String challengeId) async {
+    try {
+      DataSnapshot snapshot = await _challengesRef.child(challengeId).get();
+      if (snapshot.exists) {
+        Map<String, dynamic> challengeMap =
+            Map<String, dynamic>.from(snapshot.value as Map);
+        Challenge challenge = Challenge.fromMap(challengeMap);
+        LogService.info("Fetched challenge by ID: $challengeId");
+        return challenge;
+      } else {
+        LogService.info("Challenge not found: $challengeId");
+        return null;
+      }
+    } catch (error) {
+      LogService.error("Error fetching challenge by ID: $error");
+      return null;
     }
   }
 

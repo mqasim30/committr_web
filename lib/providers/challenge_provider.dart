@@ -8,8 +8,6 @@ import '../models/user_challenge_detail.dart';
 import '../services/challenge_service.dart';
 import '../services/user_service.dart';
 import '../services/log_service.dart';
-// For ChallengeEvent and ChallengeEventType
-// For UserChallengeEvent and UserChallengeEventType
 
 class ChallengeProvider extends ChangeNotifier {
   List<Challenge> _availableChallenges = [];
@@ -19,11 +17,11 @@ class ChallengeProvider extends ChangeNotifier {
   final ChallengeService _challengeService;
   final UserService _userService;
 
-  // Subscription to the global challenges stream
+  // Subscriptions to streams
   late StreamSubscription<ChallengeEvent> _challengesSubscription;
-
-  // Subscription to the user's challenges stream
   late StreamSubscription<UserChallengeEvent> _userChallengesSubscription;
+
+  bool _initialized = false;
 
   ChallengeProvider(this._challengeService, this._userService);
 
@@ -33,6 +31,13 @@ class ChallengeProvider extends ChangeNotifier {
 
   /// Initializes the provider by fetching challenges and setting up listeners.
   Future<void> initialize() async {
+    if (_initialized) {
+      LogService.info("ChallengeProvider is already initialized.");
+      return;
+    }
+    _initialized = true;
+
+    LogService.info("Initializing ChallengeProvider.");
     await _fetchInitialData();
     _listenToChallenges();
     _listenToUserChallenges();
@@ -61,7 +66,9 @@ class ChallengeProvider extends ChangeNotifier {
     _availableChallenges = allChallenges
         .where((challenge) =>
             !_userChallenges.containsKey(challenge.challengeId) &&
-            challenge.isJoinable)
+            challenge.isJoinable &&
+            !_availableChallenges
+                .any((c) => c.challengeId == challenge.challengeId))
         .toList();
 
     _activeChallenges = allChallenges
@@ -70,7 +77,9 @@ class ChallengeProvider extends ChangeNotifier {
             (_userChallenges[challenge.challengeId]!.userChallengeStatus ==
                     "In Progress" ||
                 _userChallenges[challenge.challengeId]!.userChallengeStatus ==
-                    "Submission"))
+                    "Submission") &&
+            !_activeChallenges
+                .any((c) => c.challengeId == challenge.challengeId))
         .toList();
   }
 
@@ -97,9 +106,11 @@ class ChallengeProvider extends ChangeNotifier {
   /// Handles a challenge being added
   void _handleChallengeAdded(Challenge challenge) {
     LogService.info("Handling added challenge: ${challenge.challengeId}");
-    // If user hasn't joined and it's joinable, add to available
+    // If user hasn't joined and it's joinable, and not already in the list, add to available
     if (!_userChallenges.containsKey(challenge.challengeId) &&
-        challenge.isJoinable) {
+        challenge.isJoinable &&
+        !_availableChallenges
+            .any((c) => c.challengeId == challenge.challengeId)) {
       _availableChallenges.add(challenge);
       notifyListeners();
     }
@@ -108,29 +119,44 @@ class ChallengeProvider extends ChangeNotifier {
   /// Handles a challenge being updated
   void _handleChallengeUpdated(Challenge challenge) {
     LogService.info("Handling updated challenge: ${challenge.challengeId}");
-    // Update in available challenges
+
+    // Check if challenge is in available challenges
     int availIndex = _availableChallenges
         .indexWhere((c) => c.challengeId == challenge.challengeId);
+
     if (availIndex != -1) {
-      _availableChallenges[availIndex] = challenge;
+      if (challenge.isJoinable) {
+        // Update the challenge in available challenges
+        _availableChallenges[availIndex] = challenge;
+      } else {
+        // Remove the challenge from available challenges
+        _availableChallenges.removeAt(availIndex);
+      }
       notifyListeners();
-      return;
     }
 
-    // Update in active challenges
+    // Check if challenge is in active challenges
     int activeIndex = _activeChallenges
         .indexWhere((c) => c.challengeId == challenge.challengeId);
+
     if (activeIndex != -1) {
+      // Update the challenge in active challenges
       _activeChallenges[activeIndex] = challenge;
       notifyListeners();
-      return;
     }
 
-    // If not found in either, decide where to add based on user participation
-    if (_userChallenges.containsKey(challenge.challengeId) &&
-        (challenge.isJoinable)) {
-      _activeChallenges.add(challenge);
-      notifyListeners();
+    // If challenge is not in any list, determine where to add it
+    if (availIndex == -1 && activeIndex == -1) {
+      if (!_userChallenges.containsKey(challenge.challengeId) &&
+          challenge.isJoinable) {
+        // Add to available challenges
+        _availableChallenges.add(challenge);
+        notifyListeners();
+      } else if (_userChallenges.containsKey(challenge.challengeId)) {
+        // User has joined this challenge, add to active challenges
+        _activeChallenges.add(challenge);
+        notifyListeners();
+      }
     }
   }
 
@@ -178,18 +204,30 @@ class ChallengeProvider extends ChangeNotifier {
 
   /// Re-categorizes challenges when user challenges are updated
   void _reCategorizeBasedOnUserChallenges() {
-    // Iterate through available challenges and remove any that the user has joined
+    LogService.info("Re-categorizing challenges based on user challenges.");
+
+    // Remove available challenges that the user has now joined
     _availableChallenges.removeWhere(
         (challenge) => _userChallenges.containsKey(challenge.challengeId));
 
-    // Re-fetch all challenges to ensure up-to-date data
-    _challengeService.fetchAllChallenges().then((allChallenges) {
-      _categorizeChallenges(allChallenges);
-      notifyListeners();
-    }).catchError((error) {
-      LogService.error(
-          "Error re-fetching challenges for categorization: $error");
+    // Remove active challenges that the user is no longer participating in
+    _activeChallenges.removeWhere(
+        (challenge) => !_userChallenges.containsKey(challenge.challengeId));
+
+    // Add to active challenges if not already present
+    _userChallenges.forEach((challengeId, userChallengeDetail) {
+      if (!_activeChallenges.any((c) => c.challengeId == challengeId)) {
+        // Fetch the challenge from challengeService
+        _challengeService.fetchChallengeById(challengeId).then((challenge) {
+          if (challenge != null) {
+            _activeChallenges.add(challenge);
+            notifyListeners();
+          }
+        });
+      }
     });
+
+    notifyListeners();
   }
 
   /// Disposes of all subscriptions to prevent memory leaks

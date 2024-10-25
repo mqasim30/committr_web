@@ -103,7 +103,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
                   // Number of Participants
                   Text(
-                    'Participants: ${updatedChallenge.challengeParticipantsId.length}',
+                    'Participants: ${updatedChallenge.challengeNumberParticipants}',
                     style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 20),

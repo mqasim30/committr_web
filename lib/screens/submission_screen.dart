@@ -1,4 +1,5 @@
-// lib/screens/oath_screen.dart
+// lib/screens/submission_screen.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -7,23 +8,23 @@ import '../services/log_service.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'main_screen.dart'; // Import MainScreen
 
-class OathScreen extends StatefulWidget {
+class SubmissionScreen extends StatefulWidget {
   final String userId;
   final String challengeId;
 
-  const OathScreen({
+  const SubmissionScreen({
     Key? key,
     required this.userId,
     required this.challengeId,
   }) : super(key: key);
 
   @override
-  _OathScreenState createState() => _OathScreenState();
+  _SubmissionScreenState createState() => _SubmissionScreenState();
 }
 
-class _OathScreenState extends State<OathScreen> {
+class _SubmissionScreenState extends State<SubmissionScreen> {
   final _formKey = GlobalKey<FormState>();
-  double? _currentWeight;
+  double? _finalWeight;
   String _weightUnit = 'kg'; // Default unit
   XFile? _selectedImage; // Using XFile for compatibility
   Uint8List? _selectedImageBytes; // Store image bytes
@@ -69,7 +70,8 @@ class _OathScreenState extends State<OathScreen> {
     if (_selectedImageBytes == null) return null;
 
     try {
-      String fileName = 'oath_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String fileName =
+          'submission_${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference storageRef = FirebaseStorage.instance
           .ref()
           .child(widget.userId)
@@ -91,8 +93,8 @@ class _OathScreenState extends State<OathScreen> {
     }
   }
 
-  /// Handles the submission of the oath
-  Future<void> _submitOath() async {
+  /// Handles the submission of the final weight and image
+  Future<void> _submitFinalData() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedImageBytes == null) {
@@ -122,11 +124,11 @@ class _OathScreenState extends State<OathScreen> {
     }
 
     try {
-      // Save weight as double
-      double weightValue = _currentWeight!;
+      // Save final weight and submission image
+      double weightValue = _finalWeight!;
       String unit = _weightUnit;
 
-      // Update the UserChallengeDetail's challengeData with weight and oathImageUrl
+      // Update the UserChallengeDetail's challengeData with final weight and submissionImageUrl
       DatabaseReference userChallengeRef = FirebaseDatabase.instance
           .ref()
           .child('USER_PROFILES')
@@ -135,17 +137,13 @@ class _OathScreenState extends State<OathScreen> {
           .child(widget.challengeId);
 
       await userChallengeRef.update({
-        'ChallengeData': {
-          'startingWeight': weightValue,
-          'currentWeight': weightValue,
-          'weightUnit': unit,
-          'oathImageUrl': imageUrl,
-        },
-        'IsOathTaken': true,
+        'challengeData/finalWeight': weightValue,
+        'challengeData/submissionImageUrl': imageUrl,
+        'userChallengeStatus': 'Completed',
       });
 
       LogService.info(
-          "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
+          "User ${widget.userId} has submitted final data for challenge ${widget.challengeId}");
 
       setState(() {
         _isLoading = false;
@@ -159,16 +157,16 @@ class _OathScreenState extends State<OathScreen> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Oath submitted successfully!')),
+        const SnackBar(content: Text('Submission completed successfully!')),
       );
     } catch (e) {
-      LogService.error("Error submitting oath: $e");
+      LogService.error("Error submitting final data: $e");
       setState(() {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Failed to submit oath. Please try again.')),
+            content: Text('Failed to submit data. Please try again.')),
       );
     }
   }
@@ -185,7 +183,7 @@ class _OathScreenState extends State<OathScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Take the Oath'),
+        title: const Text('Submit Final Data'),
       ),
       body: Stack(
         children: [
@@ -197,20 +195,20 @@ class _OathScreenState extends State<OathScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Current Weight Input with Toggle
+                  // Final Weight Input with Toggle
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
                           decoration: const InputDecoration(
-                            labelText: 'Current Weight',
+                            labelText: 'Final Weight',
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your current weight.';
+                              return 'Please enter your final weight.';
                             }
                             final weight = double.tryParse(value);
                             if (weight == null || weight <= 0) {
@@ -219,7 +217,7 @@ class _OathScreenState extends State<OathScreen> {
                             return null;
                           },
                           onSaved: (value) {
-                            _currentWeight = double.parse(value!);
+                            _finalWeight = double.parse(value!);
                           },
                         ),
                       ),
@@ -249,7 +247,7 @@ class _OathScreenState extends State<OathScreen> {
                             )
                           : const Center(
                               child: Text(
-                                'Tap to upload your oath image',
+                                'Tap to upload your final image',
                                 style: TextStyle(color: Colors.grey),
                               ),
                             ),
@@ -259,8 +257,8 @@ class _OathScreenState extends State<OathScreen> {
 
                   // Submit Button
                   ElevatedButton(
-                    onPressed: _submitOath,
-                    child: const Text('Submit Oath'),
+                    onPressed: _submitFinalData,
+                    child: const Text('Submit'),
                   ),
                 ],
               ),

@@ -1,8 +1,10 @@
-// widgets/google_sign_in_button.dart
+// lib/widgets/google_sign_in_button.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
 
 /// GoogleSignInButton is a custom widget that initiates Google Sign-In when pressed.
+/// It should only be used on non-web platforms.
 class GoogleSignInButton extends StatelessWidget {
   final VoidCallback onPressed;
 
@@ -10,6 +12,11 @@ class GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      // Do not render this button on web
+      return const SizedBox.shrink();
+    }
+
     double screenHeight = MediaQuery.of(context).size.height;
     double buttonHeight = screenHeight * 0.07;
     double iconSize = buttonHeight * 0.5;

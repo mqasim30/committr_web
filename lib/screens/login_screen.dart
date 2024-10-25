@@ -1,5 +1,6 @@
-// screens/login_screen.dart
+// lib/screens/login_screen.dart
 
+import 'package:committr_web/main.dart';
 import 'package:committr_web/widgets/loading_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,7 +9,7 @@ import '../services/auth_service.dart';
 import '../services/log_service.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:provider/provider.dart';
-import 'main_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       // Navigate to MainScreen
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainScreen()),
+        MaterialPageRoute(builder: (_) => const MainScreenWithListener()),
       );
     } else {
       LogService.warning("Google Sign-In failed or was canceled");
@@ -149,9 +150,58 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.topCenter,
                     child: SizedBox(
                       width: buttonWidth,
-                      child: GoogleSignInButton(
-                        onPressed: _signInWithGoogle,
-                      ),
+                      child: kIsWeb
+                          ? ElevatedButton(
+                              onPressed: _signInWithGoogle,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      screenHeight * 0.07 * 0.5),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: screenHeight * 0.07 * 0.2,
+                                ),
+                                minimumSize: Size(
+                                  double.infinity,
+                                  screenHeight * 0.07,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 15),
+                                    child: Image.asset(
+                                      'assets/images/google_icon.png',
+                                      height: screenHeight * 0.07 * 0.5,
+                                      width: screenHeight * 0.07 * 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 15),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 10),
+                                      child: Text(
+                                        'Continue with Google',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: screenHeight * 0.07 * 0.35,
+                                          color: const Color.fromARGB(
+                                              255, 50, 50, 50),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : GoogleSignInButton(
+                              onPressed: _signInWithGoogle,
+                            ),
                     ),
                   ),
                 ),
@@ -160,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           if (_isLoading)
             Container(
-              color: Colors.white.withOpacity(1),
+              color: Colors.white.withOpacity(0.8),
               child: const Center(
                 child: LoadingOverlay(),
               ),
