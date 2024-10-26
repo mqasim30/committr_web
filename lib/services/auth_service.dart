@@ -8,7 +8,7 @@ import '../models/user_profile.dart';
 import 'ip_service.dart';
 import 'geolocation_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'server_time_service.dart'; // Import ServerTimeService
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -105,14 +105,16 @@ class AuthService {
       UserProfile? existingProfile =
           await _databaseService.readUserProfile(userId);
 
-      int currentTimestamp = DateTime.now().millisecondsSinceEpoch;
+      // Use server time instead of local time
+      DateTime serverTime = await ServerTimeService.getServerTime();
+      int currentTimestamp = serverTime.millisecondsSinceEpoch;
 
       if (existingProfile != null) {
         // Prepare updates
         Map<String, dynamic> updates = {
           'UserIP': ip,
           'UserCountry': country,
-          'UserActiveDate': ServerValue.timestamp,
+          'UserActiveDate': currentTimestamp,
           'Platform': platform,
         };
 

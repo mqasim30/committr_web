@@ -6,17 +6,17 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_selector/file_selector.dart';
 import '../services/log_service.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'main_screen.dart'; // Import MainScreen
+import 'main_screen.dart';
 
 class SubmissionScreen extends StatefulWidget {
   final String userId;
   final String challengeId;
 
   const SubmissionScreen({
-    Key? key,
+    super.key,
     required this.userId,
     required this.challengeId,
-  }) : super(key: key);
+  });
 
   @override
   _SubmissionScreenState createState() => _SubmissionScreenState();
@@ -25,10 +25,57 @@ class SubmissionScreen extends StatefulWidget {
 class _SubmissionScreenState extends State<SubmissionScreen> {
   final _formKey = GlobalKey<FormState>();
   double? _finalWeight;
-  String _weightUnit = 'kg'; // Default unit
+  String? _weightUnit; // Will be set to the stored unit
   XFile? _selectedImage; // Using XFile for compatibility
   Uint8List? _selectedImageBytes; // Store image bytes
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStoredWeightUnit();
+  }
+
+  /// Fetches the stored weight unit from the database
+  Future<void> _fetchStoredWeightUnit() async {
+    try {
+      DatabaseReference userChallengeRef = FirebaseDatabase.instance
+          .ref()
+          .child('USER_PROFILES')
+          .child(widget.userId)
+          .child('UserChallenges')
+          .child(widget.challengeId);
+
+      DataSnapshot snapshot =
+          await userChallengeRef.child('ChallengeData').get();
+
+      if (snapshot.exists) {
+        Map<dynamic, dynamic>? challengeData =
+            snapshot.value as Map<dynamic, dynamic>?;
+        if (challengeData != null && challengeData.containsKey('weightUnit')) {
+          setState(() {
+            _weightUnit = challengeData['weightUnit'] as String;
+          });
+          LogService.info("Stored weight unit fetched: $_weightUnit");
+        } else {
+          setState(() {
+            _weightUnit = 'kg';
+          });
+          LogService.warning("Weight unit not found. Defaulting to kg.");
+        }
+      } else {
+        setState(() {
+          _weightUnit = 'kg';
+        });
+        LogService.warning("ChallengeData not found. Defaulting to kg.");
+      }
+    } catch (e) {
+      setState(() {
+        _weightUnit = 'kg';
+      });
+      LogService.error("Error fetching stored weight unit: $e");
+    }
+  }
 
   /// Picks an image from the device (supports web, mobile, and desktop)
   Future<void> _pickImage() async {
@@ -126,7 +173,6 @@ class _SubmissionScreenState extends State<SubmissionScreen> {
     try {
       // Save final weight and submission image
       double weightValue = _finalWeight!;
-      String unit = _weightUnit;
 
       // Update the UserChallengeDetail's challengeData with final weight and submissionImageUrl
       DatabaseReference userChallengeRef = FirebaseDatabase.instance
@@ -137,9 +183,9 @@ class _SubmissionScreenState extends State<SubmissionScreen> {
           .child(widget.challengeId);
 
       await userChallengeRef.update({
-        'challengeData/finalWeight': weightValue,
-        'challengeData/submissionImageUrl': imageUrl,
-        'userChallengeStatus': 'Completed',
+        'ChallengeData/finalWeight': weightValue,
+        'ChallengeData/submissionImageUrl': imageUrl,
+        'userChallengeStatus': 'Pending',
       });
 
       LogService.info(
@@ -173,14 +219,29 @@ class _SubmissionScreenState extends State<SubmissionScreen> {
 
   /// Toggles the weight unit between kg and lb
   void _toggleWeightUnit() {
-    setState(() {
-      _weightUnit = _weightUnit == 'kg' ? 'lb' : 'kg';
-    });
-    LogService.info("Weight unit toggled to $_weightUnit");
+    // Disable toggling since we want to keep the unit same as stored
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text('Weight unit is fixed to $_weightUnit for this submission.'),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_weightUnit == null) {
+      // Show loading indicator while fetching the weight unit
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Submit Final Data'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Submit Final Data'),
@@ -200,9 +261,9 @@ class _SubmissionScreenState extends State<SubmissionScreen> {
                     children: [
                       Expanded(
                         child: TextFormField(
-                          decoration: const InputDecoration(
-                            labelText: 'Final Weight',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: 'Final Weight ($_weightUnit)',
+                            border: const OutlineInputBorder(),
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
@@ -224,7 +285,7 @@ class _SubmissionScreenState extends State<SubmissionScreen> {
                       const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: _toggleWeightUnit,
-                        child: Text(_weightUnit.toUpperCase()),
+                        child: Text(_weightUnit!.toUpperCase()),
                       ),
                     ],
                   ),

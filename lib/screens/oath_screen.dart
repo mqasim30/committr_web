@@ -1,21 +1,22 @@
 // lib/screens/oath_screen.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_selector/file_selector.dart';
 import '../services/log_service.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'main_screen.dart'; // Import MainScreen
+import 'main_screen.dart';
 
 class OathScreen extends StatefulWidget {
   final String userId;
   final String challengeId;
 
   const OathScreen({
-    Key? key,
+    super.key,
     required this.userId,
     required this.challengeId,
-  }) : super(key: key);
+  });
 
   @override
   _OathScreenState createState() => _OathScreenState();

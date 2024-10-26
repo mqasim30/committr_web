@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import '../models/challenge.dart';
 import '../services/user_service.dart';
 import '../widgets/loading_overlay.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'payment_status_listener.dart';
+import '../services/log_service.dart';
 
 class PledgeAmountSelectionScreen extends StatefulWidget {
   final Challenge challenge;
@@ -31,7 +36,7 @@ class _PledgeAmountSelectionScreenState
     return pledgeAmount - 5;
   }
 
-  /// Handles the pledge selection and attempts to join the challenge.
+  /// Handles the pledge selection and initiates the payment process.
   Future<void> selectPledgeAmount(double amount) async {
     setState(() {
       isLoading = true;
@@ -39,23 +44,86 @@ class _PledgeAmountSelectionScreenState
 
     final currentUser = _userService.getCurrentUser();
     if (currentUser != null) {
-      final userId = currentUser.uid;
+      try {
+        final int amountInCents = (amount * 100).toInt();
+        final String userId = currentUser.uid; // Assuming userId is uid
+        final String challengeId =
+            widget.challenge.challengeId; // Assuming challenge has challengeId
 
-      // Pass the BuildContext to joinChallenge
-      bool joinResult = await _userService.joinChallenge(
-          context, userId, widget.challenge, amount);
+        // Create Checkout Session
+        final response = await http.post(
+          Uri.parse(
+              'https://createcheckoutsession-zkxlm7bvjq-uc.a.run.app/createCheckoutSession'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'amount': amountInCents,
+            'userId': userId, // Pass the user ID
+            'challengeId': challengeId, // Pass the challenge ID
+          }),
+        );
 
-      setState(() {
-        isLoading = false;
-      });
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final sessionUrl = data['sessionUrl'];
+          final sessionId = data['sessionId'];
 
-      if (joinResult) {
-        // Since navigation is handled in joinChallenge, no need to navigate back here.
-        // Similarly, SnackBar is handled in UserService, so no need to show it here.
-        // Optionally, you can show a success message or perform other actions if needed.
-      } else {
-        // If joinResult is false, it means either the user has already joined or an error occurred.
-        // Error messages are handled within UserService, so no additional action is required here.
+          if (sessionUrl == null ||
+              sessionUrl.isEmpty ||
+              sessionId == null ||
+              sessionId.isEmpty) {
+            throw Exception('Invalid session URL or ID received.');
+          }
+
+          LogService.info('Received sessionUrl: $sessionUrl');
+
+          // Launch Stripe Checkout
+          final Uri checkoutUri = Uri.parse(sessionUrl);
+          if (await canLaunchUrl(checkoutUri)) {
+            await launchUrl(
+              checkoutUri,
+              mode: LaunchMode
+                  .externalApplication, // Ensures it opens in a new tab
+            );
+
+            // Navigate to the PaymentStatusListener
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PaymentStatusListener(
+                  pledgeAmount: amount,
+                  sessionId: sessionId,
+                  userId: userId,
+                  challengeId: challengeId,
+                ),
+              ),
+            );
+
+            setState(() {
+              isLoading = false;
+            });
+          } else {
+            throw Exception('Could not launch $sessionUrl');
+          }
+        } else {
+          // Attempt to parse the error message from the response
+          String errorMsg = 'Failed to create checkout session.';
+          try {
+            final errorData = jsonDecode(response.body);
+            if (errorData['error']) {
+              errorMsg = errorData['error']['message'] ?? errorMsg;
+            }
+          } catch (_) {}
+          throw Exception(errorMsg);
+        }
+      } catch (e) {
+        setState(() {
+          isLoading = false;
+        });
+
+        // Handle error during payment
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment failed: ${e.toString()}')),
+        );
       }
     } else {
       setState(() {

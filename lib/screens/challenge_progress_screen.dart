@@ -8,12 +8,12 @@ import '../models/challenge.dart';
 import '../utils/challenge_helper.dart';
 import '../services/log_service.dart'; // Import LogService
 import 'dart:convert'; // For jsonEncode
+import '../services/server_time_service.dart'; // Import ServerTimeService
 
 class ChallengeProgressScreen extends StatefulWidget {
   final Challenge challenge;
 
-  const ChallengeProgressScreen({Key? key, required this.challenge})
-      : super(key: key);
+  const ChallengeProgressScreen({super.key, required this.challenge});
 
   @override
   _ChallengeProgressScreenState createState() =>
@@ -21,6 +21,26 @@ class ChallengeProgressScreen extends StatefulWidget {
 }
 
 class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
+  DateTime? _currentDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchServerTime();
+  }
+
+  Future<void> _fetchServerTime() async {
+    try {
+      DateTime serverTime = await ServerTimeService.getServerTime();
+      setState(() {
+        _currentDate = serverTime;
+      });
+    } catch (e) {
+      LogService.error("Error fetching server time: $e");
+      // Handle error appropriately, maybe set a default time or show an error message
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final challengeProvider = Provider.of<ChallengeProvider>(context);
@@ -40,6 +60,18 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
         ),
         body: const Center(
           child: Text('You have not joined this challenge yet.'),
+        ),
+      );
+    }
+
+    if (_currentDate == null) {
+      // Show loading indicator while fetching server time
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Challenge Progress'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
         ),
       );
     }
@@ -118,7 +150,7 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
         DateTime.fromMillisecondsSinceEpoch(startDateTimestamp, isUtc: false);
     final endDate =
         DateTime.fromMillisecondsSinceEpoch(endDateTimestamp, isUtc: false);
-    final currentDate = DateTime.now();
+    final currentDate = _currentDate!;
 
     final progress =
         ChallengeHelper.calculateProgress(startDate, endDate, currentDate);

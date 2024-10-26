@@ -12,7 +12,11 @@ import '../services/log_service.dart';
 import 'login_screen.dart';
 import 'oath_screen.dart';
 import 'challenge_progress_screen.dart';
-import 'submission_screen.dart'; // Import SubmissionScreen
+import 'submission_screen.dart';
+import 'missed_submission_screen.dart';
+import 'pending_screen.dart';
+import 'completed_screen.dart';
+import 'failed_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -168,47 +172,13 @@ class _MainScreenState extends State<MainScreen> {
                               ),
                               trailing: ElevatedButton(
                                 onPressed: () {
-                                  if (userChallengeDetail != null &&
-                                      !userChallengeDetail.isOathTaken) {
-                                    // Navigate to Oath Screen
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => OathScreen(
-                                          userId: Provider.of<AuthService>(
-                                                  context,
-                                                  listen: false)
-                                              .currentUser!
-                                              .uid,
-                                          challengeId: challenge.challengeId,
-                                        ),
-                                      ),
-                                    );
-                                  } else if (userChallengeDetail != null &&
-                                      userChallengeDetail.isOathTaken) {
-                                    // Check the userChallengeStatus
-                                    if (userChallengeDetail
-                                            .userChallengeStatus ==
-                                        'In Progress') {
-                                      // Navigate to Challenge Progress Screen
+                                  if (userChallengeDetail != null) {
+                                    if (!userChallengeDetail.isOathTaken) {
+                                      // Navigate to Oath Screen
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) =>
-                                              ChallengeProgressScreen(
-                                            challenge: challenge,
-                                          ),
-                                        ),
-                                      );
-                                    } else if (userChallengeDetail
-                                            .userChallengeStatus ==
-                                        'Submission') {
-                                      // Navigate to Submission Screen
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              SubmissionScreen(
+                                          builder: (context) => OathScreen(
                                             userId: Provider.of<AuthService>(
                                                     context,
                                                     listen: false)
@@ -218,6 +188,98 @@ class _MainScreenState extends State<MainScreen> {
                                           ),
                                         ),
                                       );
+                                    } else {
+                                      // Handle based on userChallengeStatus
+                                      switch (userChallengeDetail
+                                          .userChallengeStatus) {
+                                        case 'In Progress':
+                                          // Navigate to Challenge Progress Screen
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  ChallengeProgressScreen(
+                                                challenge: challenge,
+                                              ),
+                                            ),
+                                          );
+                                          break;
+                                        case 'Submission':
+                                          // Navigate to Submission Screen
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  SubmissionScreen(
+                                                userId:
+                                                    Provider.of<AuthService>(
+                                                            context,
+                                                            listen: false)
+                                                        .currentUser!
+                                                        .uid,
+                                                challengeId:
+                                                    challenge.challengeId,
+                                              ),
+                                            ),
+                                          );
+                                          break;
+                                        case 'Pending':
+                                          // Navigate to Pending Screen
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  PendingScreen(
+                                                challenge: challenge,
+                                              ),
+                                            ),
+                                          );
+                                          break;
+                                        case 'Missed Submission':
+                                          // Navigate to Missed Submission Screen
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  MissedSubmissionScreen(
+                                                challenge: challenge,
+                                              ),
+                                            ),
+                                          );
+                                          break;
+                                        case 'Completed':
+                                          // Navigate to Completed Screen
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  CompletedScreen(
+                                                challenge: challenge,
+                                              ),
+                                            ),
+                                          );
+                                          break;
+                                        case 'Failed':
+                                          // Navigate to Failed Screen
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FailedScreen(
+                                                challenge: challenge,
+                                              ),
+                                            ),
+                                          );
+                                          break;
+                                        default:
+                                          // Handle any other statuses or show a default message
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    'Unknown status: ${userChallengeDetail.userChallengeStatus}')),
+                                          );
+                                      }
                                     }
                                   } else {
                                     // User has not joined the challenge
