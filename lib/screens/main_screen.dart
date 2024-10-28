@@ -9,7 +9,6 @@ import 'challenge_detail_screen.dart';
 import '../widgets/loading_overlay.dart';
 import '../services/auth_service.dart';
 import '../services/log_service.dart';
-import 'login_screen.dart';
 import 'oath_screen.dart';
 import 'challenge_progress_screen.dart';
 import 'submission_screen.dart';
@@ -49,7 +48,6 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         isLoading = false;
       });
-      // Optionally, show an error message to the user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching challenges: $e')),
       );
@@ -63,26 +61,43 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Main Screen'),
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 20, // Adjust the radius as needed
+              backgroundImage: Provider.of<AuthService>(context, listen: false)
+                          .currentUser!
+                          .photoURL !=
+                      null
+                  ? NetworkImage(
+                      Provider.of<AuthService>(context, listen: false)
+                          .currentUser!
+                          .photoURL!)
+                  : null,
+              child: Provider.of<AuthService>(context, listen: false)
+                          .currentUser!
+                          .photoURL ==
+                      null
+                  ? const Icon(Icons.person, size: 30) // Placeholder icon
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Text(
+                'Hello, ${Provider.of<AuthService>(context, listen: false).currentUser!.displayName}'),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              final authService =
-                  Provider.of<AuthService>(context, listen: false);
-              await authService.signOut();
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              // Open the menu or navigation drawer
             },
-            tooltip: 'Sign Out',
           ),
         ],
       ),
       body: Stack(
         children: [
-          // Main Content
+          // Main Content with RefreshIndicator
           RefreshIndicator(
             onRefresh: () async {
               setState(() {
@@ -92,93 +107,89 @@ class _MainScreenState extends State<MainScreen> {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Available Challenges',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  challengeProvider.availableChallenges.isNotEmpty
-                      ? ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount:
-                              challengeProvider.availableChallenges.length,
-                          itemBuilder: (context, index) {
-                            Challenge challenge =
-                                challengeProvider.availableChallenges[index];
-                            return ListTile(
-                              title: Text(challenge.challengeTitle),
-                              subtitle: Text(
-                                'Duration: ${challenge.challengeDurationDays} days\n'
-                                'Participants: ${challenge.challengeNumberParticipants}\n'
-                                'Pot Size: \$${challenge.challengePotSize}',
-                              ),
-                              trailing: ElevatedButton(
-                                onPressed: () {
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Static Buttons Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Navigate to Leaderboard
+                          },
+                          icon: const Icon(Icons.emoji_events),
+                          label: const Text('Leaderboard'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            // Invite action
+                          },
+                          icon: const Icon(Icons.favorite),
+                          label: const Text('Invite'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Active Commitments (Horizontal Scroll)
+                    const Text(
+                      'Active Commitments:',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 150, // Set a fixed height for active challenges
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: challengeProvider.activeChallenges.length,
+                        itemBuilder: (context, index) {
+                          Challenge challenge =
+                              challengeProvider.activeChallenges[index];
+                          UserChallengeDetail? userChallengeDetail =
+                              userChallenges[challenge.challengeId];
+
+                          return GestureDetector(
+                            onTap: () {
+                              // Handle based on userChallengeStatus
+                              if (userChallengeDetail != null) {
+                                if (!userChallengeDetail.isOathTaken) {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => ChallengeDetailScreen(
-                                        challenge: challenge,
+                                      builder: (context) => OathScreen(
+                                        userId: Provider.of<AuthService>(
+                                                context,
+                                                listen: false)
+                                            .currentUser!
+                                            .uid,
+                                        challengeId: challenge.challengeId,
                                       ),
                                     ),
                                   );
-                                },
-                                child: const Text('Join'),
-                              ),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ChallengeDetailScreen(
-                                      challenge: challenge,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        )
-                      : const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text(
-                            'No available challenges at the moment.',
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                  const SizedBox(height: 40),
-                  const Text(
-                    'Active Challenges',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  challengeProvider.activeChallenges.isNotEmpty
-                      ? ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: challengeProvider.activeChallenges.length,
-                          itemBuilder: (context, index) {
-                            Challenge challenge =
-                                challengeProvider.activeChallenges[index];
-                            UserChallengeDetail? userChallengeDetail =
-                                userChallenges[challenge.challengeId];
-                            return ListTile(
-                              title: Text(challenge.challengeTitle),
-                              subtitle: Text(
-                                'Duration: ${challenge.challengeDurationDays} days\n'
-                                'Pot Size: \$${challenge.challengePotSize}\n'
-                                'Participants: ${challenge.challengeNumberParticipants}',
-                              ),
-                              trailing: ElevatedButton(
-                                onPressed: () {
-                                  if (userChallengeDetail != null) {
-                                    if (!userChallengeDetail.isOathTaken) {
-                                      // Navigate to Oath Screen
+                                } else {
+                                  // Determine navigation based on the user challenge status
+                                  switch (
+                                      userChallengeDetail.userChallengeStatus) {
+                                    case 'In Progress':
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => OathScreen(
+                                          builder: (context) =>
+                                              ChallengeProgressScreen(
+                                                  challenge: challenge),
+                                        ),
+                                      );
+                                      break;
+                                    case 'Submission':
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              SubmissionScreen(
                                             userId: Provider.of<AuthService>(
                                                     context,
                                                     listen: false)
@@ -188,121 +199,150 @@ class _MainScreenState extends State<MainScreen> {
                                           ),
                                         ),
                                       );
-                                    } else {
-                                      // Handle based on userChallengeStatus
-                                      switch (userChallengeDetail
-                                          .userChallengeStatus) {
-                                        case 'In Progress':
-                                          // Navigate to Challenge Progress Screen
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  ChallengeProgressScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Submission':
-                                          // Navigate to Submission Screen
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  SubmissionScreen(
-                                                userId:
-                                                    Provider.of<AuthService>(
-                                                            context,
-                                                            listen: false)
-                                                        .currentUser!
-                                                        .uid,
-                                                challengeId:
-                                                    challenge.challengeId,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Pending':
-                                          // Navigate to Pending Screen
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  PendingScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Missed Submission':
-                                          // Navigate to Missed Submission Screen
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  MissedSubmissionScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Completed':
-                                          // Navigate to Completed Screen
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CompletedScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Failed':
-                                          // Navigate to Failed Screen
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  FailedScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        default:
-                                          // Handle any other statuses or show a default message
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                                content: Text(
-                                                    'Unknown status: ${userChallengeDetail.userChallengeStatus}')),
-                                          );
-                                      }
-                                    }
-                                  } else {
-                                    // User has not joined the challenge
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'You have not joined this challenge yet.')),
-                                    );
+                                      break;
+                                    case 'Pending':
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => PendingScreen(
+                                              challenge: challenge),
+                                        ),
+                                      );
+                                      break;
+                                    case 'Missed Submission':
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              MissedSubmissionScreen(
+                                                  challenge: challenge),
+                                        ),
+                                      );
+                                      break;
+                                    case 'Completed':
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => CompletedScreen(
+                                              challenge: challenge),
+                                        ),
+                                      );
+                                      break;
+                                    case 'Failed':
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => FailedScreen(
+                                              challenge: challenge),
+                                        ),
+                                      );
+                                      break;
+                                    default:
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Unknown status: ${userChallengeDetail.userChallengeStatus}')),
+                                      );
                                   }
-                                },
-                                child: const Text('View'),
+                                }
+                              }
+                            },
+                            child: Container(
+                              width: 200,
+                              margin: const EdgeInsets.only(right: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    challenge.challengeTitle,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                      '\$${userChallengeDetail?.userChallengePledgeAmount ?? '0'} Pledged'),
+                                  const Spacer(),
+                                  LinearProgressIndicator(
+                                    value:
+                                        0.5, // Replace with actual progress value
+                                    backgroundColor: Colors.grey[300],
+                                    color: Colors.green,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Available Challenges (Vertical Scroll)
+                    const Text(
+                      'Pick Your Commitment:',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: challengeProvider.availableChallenges.length,
+                      itemBuilder: (context, index) {
+                        Challenge challenge =
+                            challengeProvider.availableChallenges[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChallengeDetailScreen(
+                                  challenge: challenge,
+                                ),
                               ),
                             );
                           },
-                        )
-                      : const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text(
-                            'No active challenges at the moment.',
-                            style: TextStyle(fontSize: 16),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  challenge.challengeTitle,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                    '${challenge.challengeNumberParticipants} Participants'),
+                                const SizedBox(height: 8),
+                                Text(
+                                    'Pot Size: \$${challenge.challengePotSize}'),
+                                const SizedBox(height: 8),
+                                const Text('100 members participated today'),
+                              ],
+                            ),
                           ),
-                        ),
-                ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

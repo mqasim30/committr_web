@@ -16,13 +16,9 @@ import 'screens/main_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets/loading_overlay.dart';
 import 'services/firebase_service.dart';
-//import 'package:flutter_stripe/flutter_stripe.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Stripe.publishableKey =
-  //     'pk_test_51HAQJ8Ei7aoiR9LTqIx2dUA2N1lHrvN1iyOsuqdEB4AzRJDCvfjSKWbQgrUPrYV9A5dsgo77Rq2TsLKA5KMzD9C300MFdDo7KC';
-
   await dotenv.load(fileName: ".env");
   LogService.info("Environment variables loaded");
 
