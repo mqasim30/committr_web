@@ -30,6 +30,9 @@ dependencies:
   http: ^1.2.2
   url_launcher: ^6.3.1
   app_links: ^6.3.2
+  cached_network_image: ^3.4.1
+  responsive_framework: ^1.5.1
+  sidebarx: ^0.17.1
 
 dev_dependencies:
   flutter_test:
