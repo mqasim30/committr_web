@@ -1,20 +1,11 @@
-// lib/screens/main_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/challenge_provider.dart';
-import '../models/challenge.dart';
-import '../models/user_challenge_detail.dart';
-import 'challenge_detail_screen.dart';
+import '../widgets/active_challenges_section.dart';
+import '../widgets/available_challenges_section.dart';
 import '../widgets/loading_overlay.dart';
 import '../services/auth_service.dart';
 import '../services/log_service.dart';
-import 'oath_screen.dart';
-import 'challenge_progress_screen.dart';
-import 'submission_screen.dart';
-import 'missed_submission_screen.dart';
-import 'pending_screen.dart';
-import 'completed_screen.dart';
-import 'failed_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -52,524 +43,178 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  /// Determines greeting based on local time
+  String getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final challengeProvider = Provider.of<ChallengeProvider>(context);
-    final userChallenges = challengeProvider.userChallenges;
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
+
+    // Determine if we have active or available challenges to show
+    final hasActiveChallenges = challengeProvider.activeChallenges.isNotEmpty;
+    final hasAvailableChallenges =
+        challengeProvider.availableChallenges.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: Provider.of<AuthService>(context, listen: false)
-                          .currentUser!
-                          .photoURL !=
-                      null
-                  ? NetworkImage(
-                      Provider.of<AuthService>(context, listen: false)
-                          .currentUser!
-                          .photoURL!)
-                  : null,
-              child: Provider.of<AuthService>(context, listen: false)
-                          .currentUser!
-                          .photoURL ==
-                      null
-                  ? const Icon(Icons.person, size: 30)
-                  : null, // Placeholder icon
-            ),
-            const SizedBox(width: 8),
-            Text(
-                'Hello, ${Provider.of<AuthService>(context, listen: false).currentUser!.displayName}'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              // Open the menu or navigation drawer
-            },
-          ),
-        ],
-      ),
       body: Stack(
         children: [
           RefreshIndicator(
-            onRefresh: () async {
-              setState(() {
-                isLoading = true;
-              });
-              await fetchData();
-            },
+            onRefresh: fetchData,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(15.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Static Buttons Row
+                    // Header Section with Profile, Username, Greeting, and Menu Icon
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Navigate to Leaderboard
-                          },
-                          icon: const Icon(Icons.emoji_events),
-                          label: const Text('Leaderboard'),
+                        // Profile Picture
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundImage: user?.photoURL != null
+                              ? NetworkImage(user!.photoURL!)
+                              : null,
+                          child: user?.photoURL == null
+                              ? const Icon(Icons.person, size: 30)
+                              : null, // Placeholder icon
                         ),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            // Invite action
-                          },
-                          icon: const Icon(Icons.favorite),
-                          label: const Text('Invite'),
+                        // User Greeting Section
+                        Padding(
+                          padding: const EdgeInsets.only(top: 7.5),
+                          child: Column(
+                            children: [
+                              Text(
+                                user != null
+                                    ? 'Hello, ${user.displayName}'
+                                    : 'Hello',
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 18,
+                                  color: Color(0xFF083400),
+                                ),
+                              ),
+                              Text(
+                                getGreeting(),
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 14,
+                                  color: Color(0xFF083400),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Menu Icon
+                        Padding(
+                          padding: const EdgeInsets.only(right: 0.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              // Open the menu or navigation drawer
+                            },
+                            child: const Icon(
+                              Icons.menu,
+                              size: 40,
+                              color: Color(0xFF083400),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
 
-// Active Commitments (Horizontal Scroll)
-                    const Text(
-                      'Active Commitments:',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 20,
-                        color: Color(0xFF083400),
+                    // // Row with Leaderboard and Invite buttons
+                    // Row(
+                    //   children: [
+                    //     // Leaderboard button with 65% width
+                    //     Expanded(
+                    //       flex: 65,
+                    //       child: ElevatedButton.icon(
+                    //         onPressed: () {
+                    //           // Navigate to Leaderboard screen
+                    //         },
+                    //         icon: const Icon(Icons.emoji_events_outlined,
+                    //             color: Color(0xFF083400), size: 20),
+                    //         label: const Text(
+                    //           'Leaderboard',
+                    //           style: TextStyle(
+                    //             fontFamily: 'Poppins',
+                    //             fontWeight: FontWeight.w400,
+                    //             fontSize: 16,
+                    //             color: Color(0xFF083400),
+                    //           ),
+                    //         ),
+                    //         style: ElevatedButton.styleFrom(
+                    //           backgroundColor: Color(0xfff7f2fa),
+                    //           shape: RoundedRectangleBorder(
+                    //             borderRadius: BorderRadius.circular(15),
+                    //           ),
+                    //           elevation: 4, // Add elevation for shadow
+                    //           shadowColor: Colors.grey.withOpacity(0.5),
+                    //           padding: const EdgeInsets.symmetric(vertical: 15),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //     const SizedBox(width: 10),
+
+                    //     // Invite button with 35% width
+                    //     Expanded(
+                    //       flex: 35,
+                    //       child: ElevatedButton.icon(
+                    //         onPressed: () {
+                    //           // Navigate to Invite screen or share functionality
+                    //         },
+                    //         icon: const Icon(Icons.favorite_border,
+                    //             color: Color(0xFF083400), size: 20),
+                    //         label: const Text(
+                    //           'Invite',
+                    //           style: TextStyle(
+                    //             fontFamily: 'Poppins',
+                    //             fontWeight: FontWeight.w400,
+                    //             fontSize: 16,
+                    //             color: Color(0xFF083400),
+                    //           ),
+                    //         ),
+                    //         style: ElevatedButton.styleFrom(
+                    //           backgroundColor: Color(0xfff7f2fa),
+                    //           shape: RoundedRectangleBorder(
+                    //             borderRadius: BorderRadius.circular(15),
+                    //           ),
+                    //           elevation: 4, // Add elevation for shadow
+                    //           shadowColor: Colors.grey.withOpacity(0.5),
+                    //           padding: const EdgeInsets.symmetric(vertical: 15),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
+                    const SizedBox(height: 20),
+
+                    // Active Commitments Section (shown only if there are active challenges)
+                    if (hasActiveChallenges) ...[
+                      const ActiveChallengesSection(),
+                      const SizedBox(height: 30),
+                    ],
+
+                    // Available Challenges Section (shown only if there are available challenges)
+                    if (hasAvailableChallenges)
+                      AvailableChallengesSection(
+                        availableChallenges:
+                            challengeProvider.availableChallenges,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Transform.translate(
-                      offset: Offset(-5, 0),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 5),
-                        child: SizedBox(
-                          height: 140,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount:
-                                challengeProvider.activeChallenges.length,
-                            itemBuilder: (context, index) {
-                              Challenge challenge =
-                                  challengeProvider.activeChallenges[index];
-                              UserChallengeDetail? userChallengeDetail =
-                                  userChallenges[challenge.challengeId];
-
-                              return GestureDetector(
-                                onTap: () {
-                                  if (userChallengeDetail != null) {
-                                    if (!userChallengeDetail.isOathTaken) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => OathScreen(
-                                            userId: Provider.of<AuthService>(
-                                                    context,
-                                                    listen: false)
-                                                .currentUser!
-                                                .uid,
-                                            challengeId: challenge.challengeId,
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      switch (userChallengeDetail
-                                          .userChallengeStatus) {
-                                        case 'In Progress':
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  ChallengeProgressScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Submission':
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  SubmissionScreen(
-                                                userId:
-                                                    Provider.of<AuthService>(
-                                                            context,
-                                                            listen: false)
-                                                        .currentUser!
-                                                        .uid,
-                                                challengeId:
-                                                    challenge.challengeId,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Pending':
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  PendingScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Missed Submission':
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  MissedSubmissionScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Completed':
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  CompletedScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        case 'Failed':
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  FailedScreen(
-                                                challenge: challenge,
-                                              ),
-                                            ),
-                                          );
-                                          break;
-                                        default:
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                  'Unknown status: ${userChallengeDetail.userChallengeStatus}'),
-                                            ),
-                                          );
-                                      }
-                                    }
-                                  }
-                                },
-                                child: Card(
-                                  //color: Color(0xFFEDEFEB),
-                                  elevation: 4,
-                                  margin: const EdgeInsets.only(
-                                      right: 10, bottom: 10, left: 5),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Container(
-                                    width: 180, // Fixed width for each card
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 10),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        // Top header with Title and Circular Button
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 8,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left: 0),
-                                                child: Text(
-                                                  challenge.challengeTitle,
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 16,
-                                                    color: Color(0xFF083400),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment: Alignment.topRight,
-                                              child: Container(
-                                                margin: const EdgeInsets.only(
-                                                    bottom: 15),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      const Color(0xFF9FE870),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                padding: const EdgeInsets.all(
-                                                    5), // Reduced padding for a more compact button
-                                                child: const Icon(
-                                                  Icons.arrow_outward,
-                                                  color: Color(0xFF083400),
-                                                  size: 18,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 4),
-                                        // Body with Pledge Text
-                                        Text(
-                                          '\$${userChallengeDetail?.userChallengePledgeAmount ?? '0'} Pledged',
-                                          style: const TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                            fontSize: 14,
-                                            color: Color(0xFF083400),
-                                          ),
-                                        ),
-                                        Spacer(), // Spacer to manage flexible height
-                                        // Footer with Progress Bar
-                                        Container(
-                                          alignment: Alignment.center,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 4),
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                            child: LinearProgressIndicator(
-                                              value:
-                                                  0.5, // Sample progress value
-                                              backgroundColor: Colors.grey[300],
-                                              color: const Color(0xFF9FE870),
-                                              minHeight: 8,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    // Available Challenges (Responsive Grid with Fixed Height)
-                    const Text(
-                      'Pick Your Commitment:',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 20,
-                        color: Color(0xFF083400),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        int crossAxisCount;
-
-                        if (constraints.maxWidth >= 1200) {
-                          crossAxisCount = 4;
-                        } else if (constraints.maxWidth >= 800) {
-                          crossAxisCount = 3;
-                        } else if (constraints.maxWidth >= 600) {
-                          crossAxisCount = 2;
-                        } else {
-                          crossAxisCount = 1;
-                        }
-
-                        return GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            mainAxisSpacing: 16,
-                            crossAxisSpacing: 16,
-                            childAspectRatio: 1.8,
-                          ),
-                          itemCount:
-                              challengeProvider.availableChallenges.length,
-                          itemBuilder: (context, index) {
-                            Challenge challenge =
-                                challengeProvider.availableChallenges[index];
-
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ChallengeDetailScreen(
-                                      challenge: challenge,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: SizedBox(
-                                height: 250,
-                                child: Card(
-                                  //color: Color(0xFFEDEFEB),
-                                  elevation: 4,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      // Top Header with Title and Button
-                                      Container(
-                                        height: 0.25 * 250,
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 3,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left:
-                                                        8), // Added left padding
-                                                child: Text(
-                                                  challenge.challengeTitle,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 18,
-                                                    color: Color(0xFF083400),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF9FE870),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              padding: const EdgeInsets.all(6),
-                                              child: const Icon(
-                                                Icons.arrow_outward,
-                                                color: Color(0xFF083400),
-                                                size: 18,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Middle Section
-                                      Expanded(
-                                        flex: 3,
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  '${challenge.challengeNumberParticipants}',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w400,
-                                                    fontSize: 18,
-                                                    color: Color(0xFF083400),
-                                                  ),
-                                                ),
-                                                const Text(
-                                                  'Participants',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w400,
-                                                    fontSize: 14,
-                                                    color: Color(0xFF083400),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Container(
-                                              height: 40,
-                                              width: 1,
-                                              color: Colors.grey,
-                                            ),
-                                            Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  '\$${challenge.challengePotSize}',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w400,
-                                                    fontSize: 18,
-                                                    color: Color(0xFF083400),
-                                                  ),
-                                                ),
-                                                const Text(
-                                                  'Pot Size',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w400,
-                                                    fontSize: 14,
-                                                    color: Color(0xFF083400),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Bottom Header
-                                      Container(
-                                        height: 0.25 * 250,
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              '100 members participated today',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontWeight: FontWeight.w400,
-                                                fontSize: 14,
-                                                color: Color(0xFF083400),
-                                              ),
-                                            ),
-                                            Text(
-                                              'Starting in: 02:05',
-                                              style: const TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontWeight: FontWeight.w400,
-                                                fontSize: 14,
-                                                color: Color(0xFF083400),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),
