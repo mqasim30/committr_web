@@ -201,6 +201,7 @@ class _MainScreenState extends State<MainScreen> {
                     //     ),
                     //   ],
                     // ),
+
                     const SizedBox(height: 20),
 
                     // Active Commitments Section (shown only if there are active challenges)

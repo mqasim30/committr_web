@@ -112,7 +112,7 @@ class _AvailableChallengesSectionState
                 crossAxisCount: crossAxisCount,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: 1.8,
+                childAspectRatio: 1.7,
               ),
               itemCount: widget.availableChallenges.length,
               itemBuilder: (context, index) {
@@ -150,7 +150,7 @@ class _AvailableChallengesSectionState
                         children: [
                           // Top Header with Title and Button
                           Container(
-                            height: 0.25 * 250,
+                            height: 0.225 * 250,
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Row(
                               children: [
@@ -165,7 +165,7 @@ class _AvailableChallengesSectionState
                                       style: const TextStyle(
                                         fontFamily: 'Poppins',
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 18,
+                                        fontSize: 21,
                                         color: Color(0xFF083400),
                                       ),
                                     ),
@@ -209,7 +209,7 @@ class _AvailableChallengesSectionState
                                       style: TextStyle(
                                         fontFamily: 'Poppins',
                                         fontWeight: FontWeight.w400,
-                                        fontSize: 14,
+                                        fontSize: 16,
                                         color: Color(0xFF083400),
                                       ),
                                     ),
@@ -237,7 +237,7 @@ class _AvailableChallengesSectionState
                                       style: TextStyle(
                                         fontFamily: 'Poppins',
                                         fontWeight: FontWeight.w400,
-                                        fontSize: 14,
+                                        fontSize: 16,
                                         color: Color(0xFF083400),
                                       ),
                                     ),

@@ -187,8 +187,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                         'Continue with Google',
                                         style: TextStyle(
                                           fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: screenHeight * 0.07 * 0.35,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: screenHeight * 0.1 * 0.35,
                                           color: const Color.fromARGB(
                                               255, 50, 50, 50),
                                         ),
