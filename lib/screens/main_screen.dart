@@ -67,6 +67,7 @@ class _MainScreenState extends State<MainScreen> {
         challengeProvider.availableChallenges.isNotEmpty;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           RefreshIndicator(

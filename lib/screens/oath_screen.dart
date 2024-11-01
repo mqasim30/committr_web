@@ -1,12 +1,11 @@
-// lib/screens/oath_screen.dart
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_selector/file_selector.dart';
 import '../services/log_service.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'main_screen.dart';
+import '../models/constants.dart';
 
 class OathScreen extends StatefulWidget {
   final String userId;
@@ -25,27 +24,18 @@ class OathScreen extends StatefulWidget {
 class _OathScreenState extends State<OathScreen> {
   final _formKey = GlobalKey<FormState>();
   double? _currentWeight;
-  String _weightUnit = 'kg'; // Default unit
-  XFile? _selectedImage; // Using XFile for compatibility
-  Uint8List? _selectedImageBytes; // Store image bytes
+  String _weightUnit = 'kg';
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
   bool _isLoading = false;
 
-  /// Picks an image from the device (supports web, mobile, and desktop)
   Future<void> _pickImage() async {
     try {
-      // Define the types of files to accept
-      final XTypeGroup typeGroup = XTypeGroup(
-        label: 'images',
-        extensions: ['jpg', 'jpeg', 'png'],
-      );
-
-      // Open the file selector
-      final XFile? file = await openFile(
-        acceptedTypeGroups: [typeGroup],
-      );
+      final XTypeGroup typeGroup =
+          XTypeGroup(label: 'images', extensions: ['jpg', 'jpeg', 'png']);
+      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
 
       if (file != null) {
-        // Read the file bytes
         final Uint8List bytes = await file.readAsBytes();
 
         if (!mounted) return;
@@ -65,7 +55,6 @@ class _OathScreenState extends State<OathScreen> {
     }
   }
 
-  /// Uploads the image to Firebase Storage
   Future<String?> _uploadImage() async {
     if (_selectedImageBytes == null) return null;
 
@@ -77,7 +66,6 @@ class _OathScreenState extends State<OathScreen> {
           .child(widget.challengeId)
           .child(fileName);
 
-      // Use putData with the image bytes
       UploadTask uploadTask = storageRef.putData(_selectedImageBytes!);
 
       TaskSnapshot snapshot = await uploadTask;
@@ -92,7 +80,6 @@ class _OathScreenState extends State<OathScreen> {
     }
   }
 
-  /// Handles the submission of the oath
   Future<void> _submitOath() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -123,11 +110,9 @@ class _OathScreenState extends State<OathScreen> {
     }
 
     try {
-      // Save weight as double
       double weightValue = _currentWeight!;
       String unit = _weightUnit;
 
-      // Update the UserChallengeDetail's challengeData with weight and oathImageUrl
       DatabaseReference userChallengeRef = FirebaseDatabase.instance
           .ref()
           .child('USER_PROFILES')
@@ -152,16 +137,11 @@ class _OathScreenState extends State<OathScreen> {
         _isLoading = false;
       });
 
-      // Navigate back to MainScreen
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-        (Route<dynamic> route) => false,
-      );
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Oath submitted successfully!')),
       );
+
+      Navigator.pop(context);
     } catch (e) {
       LogService.error("Error submitting oath: $e");
       setState(() {
@@ -174,7 +154,6 @@ class _OathScreenState extends State<OathScreen> {
     }
   }
 
-  /// Toggles the weight unit between kg and lb
   void _toggleWeightUnit() {
     setState(() {
       _weightUnit = _weightUnit == 'kg' ? 'lb' : 'kg';
@@ -185,26 +164,50 @@ class _OathScreenState extends State<OathScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Take the Oath'),
-      ),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Main Content
           SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Form(
               key: _formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Current Weight Input with Toggle
+                  const SizedBox(height: 20),
+                  Text(
+                    "Congrats on\ncommitting\nto a fresh start!",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                      color: AppColors.mainFGColor,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Weight Input and Toggle Button
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
-                          decoration: const InputDecoration(
+                          cursorColor:
+                              AppColors.mainFGColor, // Change cursor color here
+                          decoration: InputDecoration(
                             labelText: 'Current Weight',
+                            labelStyle: TextStyle(
+                              color: AppColors.mainFGColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                              fontFamily: 'Poppins',
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppColors.mainFGColor,
+                                width: 2.0,
+                              ),
+                            ),
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: const TextInputType.numberWithOptions(
@@ -225,15 +228,28 @@ class _OathScreenState extends State<OathScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: _toggleWeightUnit,
-                        child: Text(_weightUnit.toUpperCase()),
+                      GestureDetector(
+                        onTap: _toggleWeightUnit,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.all(0),
+                          child: Row(
+                            children: [
+                              _buildUnitToggle('kg'),
+                              _buildUnitToggle('lb'),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 20),
 
-                  // Image Picker
+                  // Image Picker with Fit Adjustment
                   GestureDetector(
                     onTap: _pickImage,
                     child: Container(
@@ -244,38 +260,100 @@ class _OathScreenState extends State<OathScreen> {
                         color: Colors.grey[200],
                       ),
                       child: _selectedImageBytes != null
-                          ? Image.memory(
-                              _selectedImageBytes!,
-                              fit: BoxFit.cover,
+                          ? Center(
+                              // Wrap with Center widget to ensure alignment
+                              child: Image.memory(
+                                _selectedImageBytes!,
+                                fit: BoxFit.contain, // Adjusted for fitting
+                                alignment: Alignment
+                                    .center, // Ensure it stays centered
+                              ),
                             )
                           : const Center(
                               child: Text(
                                 'Tap to upload your oath image',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: AppColors.mainFGColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'Poppins',
+                                ),
                               ),
                             ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
                   // Submit Button
-                  ElevatedButton(
-                    onPressed: _submitOath,
-                    child: const Text('Submit Oath'),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _submitOath,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.mainBgColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: Text(
+                        'Submit Oath',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Poppins',
+                          color: AppColors.mainFGColor,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
+
+          // Close (X) Button at Top Right
+          Positioned(
+            top: 16,
+            right: 16,
+            child: IconButton(
+              icon: Icon(Icons.close, color: AppColors.mainFGColor),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+
           // Loading Overlay
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.5),
               child: const Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(color: Colors.white),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUnitToggle(String unit) {
+    final isActive = _weightUnit == unit;
+    return Container(
+      width: 45,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isActive ? AppColors.mainBgColor : Colors.grey[200],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        unit.toUpperCase(),
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: isActive ? AppColors.mainFGColor : Colors.black,
+          fontFamily: 'Poppins',
+        ),
       ),
     );
   }

@@ -193,6 +193,7 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Challenge Progress'),
       ),

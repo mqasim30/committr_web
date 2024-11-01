@@ -78,7 +78,7 @@ class ChallengeWebApp extends StatelessWidget {
     LogService.info("Building ChallengeWebApp");
 
     return MaterialApp(
-      title: 'Your App Name',
+      title: 'Committr',
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       themeMode: ThemeMode.light,

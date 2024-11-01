@@ -2,12 +2,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/challenge_constants.dart';
 import '../models/challenge.dart';
-import '../widgets/loading_overlay.dart';
-import 'pledge_amount_selection_screen.dart';
-import 'oath_screen.dart';
 import '../providers/challenge_provider.dart';
 import '../services/auth_service.dart';
+import '../widgets/loading_overlay.dart';
+import '../widgets/step_card.dart';
+import '../widgets/user_challenge_info_card.dart';
+import '../widgets/rules_card.dart'; // Import the RulesCard widget
+import 'pledge_amount_selection_screen.dart';
+import '../models/constants.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final Challenge challenge;
@@ -27,7 +31,6 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize loading state
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         isLoading = false;
@@ -43,168 +46,346 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         builder: (context) =>
             PledgeAmountSelectionScreen(challenge: widget.challenge),
       ),
-    ).then((_) {
-      // No need to refresh; ChallengeProvider handles real-time updates
-    });
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final challengeProvider = Provider.of<ChallengeProvider>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
     final updatedChallenge = challengeProvider.activeChallenges.firstWhere(
         (c) => c.challengeId == widget.challenge.challengeId,
         orElse: () => widget.challenge);
 
-    // Retrieve UserChallengeDetail from the provider
     final userChallengeDetail =
         challengeProvider.userChallenges[widget.challenge.challengeId];
 
+    final String detailedDescription =
+        ChallengeConstants.getDetailedDescription(
+            updatedChallenge.challengeTitle);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(updatedChallenge.challengeTitle),
-      ),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          if (isLoading)
-            const LoadingOverlay(), // Display loading overlay while fetching data
+          if (isLoading) const LoadingOverlay(),
           if (!isLoading)
             SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Challenge Description
-                  Text(
-                    updatedChallenge.challengeDescription,
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 20),
+                  // Custom Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Outlined Circle for Back Icon
+                      Container(
+                        padding: const EdgeInsets.all(1.0),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppColors.mainFGColor, width: 2),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back,
+                              color: AppColors.mainFGColor),
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
 
-                  // Challenge Duration
-                  Text(
-                    'Duration: ${updatedChallenge.challengeDurationDays} days',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
+                      // Title
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Challenge:',
+                              style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 16,
+                                  color: AppColors.mainFGColor,
+                                  height: 1.2),
+                              textAlign: TextAlign.center,
+                            ),
+                            Text(
+                              updatedChallenge.challengeTitle,
+                              style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 18,
+                                  color: AppColors.mainFGColor,
+                                  height: 1.2),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
 
-                  // Challenge Category
-                  Text(
-                    'Category: ${updatedChallenge.challengeCategory}',
-                    style: const TextStyle(fontSize: 16),
+                      // Outlined Circle for Share Icon
+                      Container(
+                        padding: const EdgeInsets.all(1.0),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppColors.mainFGColor, width: 2),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.share,
+                              color: AppColors.mainFGColor),
+                          onPressed: () {
+                            // Share functionality goes here
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
 
-                  // Pot Size
-                  Text(
-                    'Pot Size: \$${updatedChallenge.challengePotSize}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
+                  // Centered Card with Max Width Constraint and Increased Height
+                  Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              // Title
+                              Text(
+                                "\"${updatedChallenge.challengeDescription}\"",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'Poppins',
+                                  color: AppColors.mainFGColor,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
 
-                  // Number of Participants
-                  Text(
-                    'Participants: ${updatedChallenge.challengeNumberParticipants}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 20),
+                              // Participants and Pot Size with Divider
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            "${updatedChallenge.challengeNumberParticipants}",
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w400,
+                                              fontFamily: 'Poppins',
+                                              color: AppColors.mainFGColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "Participants",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontFamily: 'Poppins',
+                                              color: AppColors.mainFGColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Centered Divider
+                                    Container(
+                                      height: 50,
+                                      width: 1,
+                                      color: Colors.grey,
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 8),
+                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            "\$${updatedChallenge.challengePotSize}",
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w400,
+                                              fontFamily: 'Poppins',
+                                              color: AppColors.mainFGColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "Pot Size",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontFamily: 'Poppins',
+                                              color: AppColors.mainFGColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
 
-                  // Challenge Rules
-                  const Text(
-                    'Rules:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  const SizedBox(height: 10),
-                  ...updatedChallenge.rules.map(
-                    (rule) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Text(
-                        rule,
-                        style: const TextStyle(fontSize: 16),
+                              // Centered Member Circles with Proper Radius
+                              Center(
+                                child: SizedBox(
+                                  width: 100,
+                                  height: 44, // Increased height to fit circles
+                                  child: Stack(
+                                    children: [
+                                      Positioned(
+                                        left: 0,
+                                        child: CircleAvatar(
+                                          backgroundColor: Colors.white,
+                                          radius: 20,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        left: 20,
+                                        child: CircleAvatar(
+                                          backgroundColor: Colors.white,
+                                          radius: 20,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        left: 40,
+                                        child: CircleAvatar(
+                                          backgroundColor: Colors.white,
+                                          radius: 20,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        left: 60,
+                                        child: CircleAvatar(
+                                          backgroundColor: Color.fromARGB(
+                                              100, 159, 232, 112),
+                                          radius: 20,
+                                          child: Text(
+                                            "${updatedChallenge.challengeNumberParticipants}+",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w400,
+                                              fontFamily: 'Poppins',
+                                              color: AppColors.mainFGColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Members Committed Today Text
+                              Text(
+                                "members committed today",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontFamily: 'Poppins',
+                                  color: AppColors.mainFGColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Steps Section
+                  const Text('Steps:',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Poppins',
+                          fontSize: 18,
+                          color: AppColors.mainFGColor)),
+                  const SizedBox(height: 10),
+                  StepCard(
+                      text: "Pledge: Deposit \$35 to keep you accountable."),
+                  StepCard(text: "Commit: $detailedDescription"),
+                  StepCard(
+                      text: "Success: Get your deposited amount plus extra."),
+
                   const SizedBox(height: 20),
 
-                  // Challenge Oath (Removed)
-                  // If needed, add a description or instructions here.
+                  // Rules Section
+                  const Text('Rules:',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Poppins',
+                          fontSize: 18,
+                          color: AppColors.mainFGColor)),
+                  const SizedBox(height: 10),
 
-                  const SizedBox(height: 20),
+                  // Rule Cards with Bottom Padding
+                  ...updatedChallenge.rules.asMap().entries.map(
+                        (entry) => RulesCard(
+                          ruleText: entry.value,
+                          ruleIndex: entry.key,
+                        ),
+                      ),
+                  const SizedBox(height: 80), // Extra padding for scroll
 
-                  // Join Challenge Button or User-specific Details
-                  if (userChallengeDetail == null)
-                    ElevatedButton(
-                      onPressed: navigateToPledgeSelection,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      ),
-                      child: const Text(
-                        'Join Challenge',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'You have already joined this challenge.',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Pledge Amount: \$${userChallengeDetail.userChallengePledgeAmount}',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            'Status: ${userChallengeDetail.userChallengeStatus}',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 10),
-                          if (!userChallengeDetail.isOathTaken)
-                            ElevatedButton(
-                              onPressed: () {
-                                final authService = Provider.of<AuthService>(
-                                    context,
-                                    listen: false);
-                                final currentUser = authService.currentUser;
-                                if (currentUser != null) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => OathScreen(
-                                        userId: currentUser.uid,
-                                        challengeId:
-                                            updatedChallenge.challengeId,
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content:
-                                            Text('User not authenticated.')),
-                                  );
-                                }
-                              },
-                              child: const Text('Take Oath'),
-                            ),
-                        ],
-                      ),
+                  // User Challenge Info Section
+                  if (userChallengeDetail != null)
+                    UserChallengeInfoCard(
+                      userChallengeDetail: userChallengeDetail,
+                      challengeId: updatedChallenge.challengeId,
+                      authService: authService,
                     ),
                 ],
               ),
             ),
+          // Floating Continue Button with Outer Rectangle and Centered Button
+          Positioned(
+            bottom: 16,
+            left: 0,
+            right: 0,
+            child: Container(
+              color: const Color(0xFFEDEFEB), // Outer rectangle color
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: 250, // Desired width
+                height: 40, // Desired height
+                child: ElevatedButton(
+                  onPressed: userChallengeDetail == null
+                      ? navigateToPledgeSelection
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.mainBgColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  child: Text(
+                    'CONTINUE',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.mainFGColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

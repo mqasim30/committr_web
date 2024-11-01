@@ -139,144 +139,163 @@ class _AvailableChallengesSectionState
                       ),
                     );
                   },
-                  child: SizedBox(
-                    height: 250,
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        children: [
-                          // Top Header with Title and Button
-                          Container(
-                            height: 0.225 * 250,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  flex: 3,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 8),
-                                    child: Text(
-                                      challenge.challengeTitle,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 21,
-                                        color: Color(0xFF083400),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        double cardHeight = constraints.maxHeight;
+
+                        // Define font sizes based on card height
+                        double titleFontSize = cardHeight * 0.1;
+                        double subTitleFontSize = cardHeight * 0.1;
+                        double smallFontSize = cardHeight * 0.08;
+                        double bottomFontSize = cardHeight * 0.07;
+
+                        // Ensure font sizes are within reasonable bounds
+                        titleFontSize = titleFontSize.clamp(16.0, 24.0);
+                        subTitleFontSize = subTitleFontSize.clamp(14.0, 20.0);
+                        smallFontSize = smallFontSize.clamp(12.0, 16.0);
+                        bottomFontSize = bottomFontSize.clamp(12.0, 16.0);
+
+                        return Column(
+                          children: [
+                            // Top Header with Title and Button
+                            Container(
+                              height: cardHeight * 0.25, // 20% of card height
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Text(
+                                        challenge.challengeTitle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: titleFontSize,
+                                          color: const Color(0xFF083400),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF9FE870),
-                                    shape: BoxShape.circle,
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF9FE870),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    padding: const EdgeInsets.all(6),
+                                    child: const Icon(
+                                      Icons.arrow_outward,
+                                      color: Color(0xFF083400),
+                                      size: 18,
+                                    ),
                                   ),
-                                  padding: const EdgeInsets.all(6),
-                                  child: const Icon(
-                                    Icons.arrow_outward,
-                                    color: Color(0xFF083400),
-                                    size: 18,
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          // Middle Section
-                          Expanded(
-                            flex: 3,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '${challenge.challengeNumberParticipants}',
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 18,
-                                        color: Color(0xFF083400),
+                            // Middle Section
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '${challenge.challengeNumberParticipants}',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: subTitleFontSize,
+                                          color: const Color(0xFF083400),
+                                        ),
                                       ),
-                                    ),
-                                    const Text(
-                                      'Participants',
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 16,
-                                        color: Color(0xFF083400),
+                                      Text(
+                                        'Participants',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: smallFontSize,
+                                          color: const Color(0xFF083400),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                Container(
-                                  height: 40,
-                                  width: 1,
-                                  color: Colors.grey,
-                                ),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '\$${challenge.challengePotSize}',
-                                      style: const TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 18,
-                                        color: Color(0xFF083400),
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Pot Size',
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 16,
-                                        color: Color(0xFF083400),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Bottom Header with Countdown Timer
-                          SizedBox(
-                            height: 0.25 * 250,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  '${challenge.challengeNumberParticipants} members participated today',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 14,
-                                    color: Color(0xFF083400),
+                                    ],
                                   ),
-                                ),
-                                Text(
-                                  displayText,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 14,
-                                    color: Color(0xFF083400),
+                                  VerticalDivider(
+                                    color: Colors.grey,
+                                    thickness: 1,
+                                    width: 0,
+                                    indent: 27.5, // Adds space at the top
+                                    endIndent: 27.5, // Adds space at the bottom
                                   ),
-                                ),
-                              ],
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '\$${challenge.challengePotSize}',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: subTitleFontSize,
+                                          color: const Color(0xFF083400),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Pot Size',
+                                        style: TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: smallFontSize,
+                                          color: const Color(0xFF083400),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                            // Bottom Header with Countdown Timer
+                            SizedBox(
+                              height: cardHeight * 0.25, // 25% of card height
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${challenge.challengeNumberParticipants} members participated today',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: smallFontSize,
+                                      color: const Color(0xFF083400),
+                                    ),
+                                  ),
+                                  Text(
+                                    displayText,
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: bottomFontSize,
+                                      color: const Color(0xFF083400),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 );

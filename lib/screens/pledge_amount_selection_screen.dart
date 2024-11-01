@@ -2,14 +2,9 @@
 
 import 'package:flutter/material.dart';
 import '../models/challenge.dart';
-import '../services/user_service.dart';
+import '../services/select_pledge_service.dart';
 import '../widgets/loading_overlay.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
-import 'payment_status_listener.dart';
-import '../services/log_service.dart';
-import 'oath_screen.dart'; // Import OathScreen to navigate directly
+import '../models/constants.dart';
 
 class PledgeAmountSelectionScreen extends StatefulWidget {
   final Challenge challenge;
@@ -27,236 +22,230 @@ class PledgeAmountSelectionScreen extends StatefulWidget {
 class _PledgeAmountSelectionScreenState
     extends State<PledgeAmountSelectionScreen> {
   bool isLoading = false;
-  final UserService _userService = UserService();
+  double? selectedPledgeAmount; // Track the selected pledge amount
 
-  // Define the available pledge amounts
   final List<double> pledgeAmounts = [35.0, 55.0, 75.0, 95.0];
 
-  // Add this flag to skip payment during testing
-  static const bool skipPayment =
-      true; // Set to true to skip payment during testing
-
-  /// Calculates the additional reward based on the pledge amount.
   double calculateAdditionalReward(double pledgeAmount) {
     return pledgeAmount - 5;
   }
 
-  /// Handles the pledge selection and initiates the payment process.
-  Future<void> selectPledgeAmount(double amount) async {
+  Future<void> selectPledge(double amount) async {
     setState(() {
       isLoading = true;
     });
 
-    final currentUser = _userService.getCurrentUser();
-    if (currentUser != null) {
-      final String userId = currentUser.uid;
-      final String challengeId = widget.challenge.challengeId;
-
-      if (skipPayment) {
-        // Simulate successful payment
-        try {
-          // Call joinChallenge with pledgeAmount
-          bool joinSuccess = await _userService.joinChallenge(
-              context, userId, widget.challenge, amount);
-
-          if (joinSuccess) {
-            // Navigate to OathScreen upon successful join
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => OathScreen(
-                  userId: userId,
-                  challengeId: challengeId,
-                ),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to join challenge.')),
-            );
-          }
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error joining challenge: $e')),
-          );
-        } finally {
-          setState(() {
-            isLoading = false;
-          });
-        }
-      } else {
-        // Existing Stripe payment code
-        try {
-          final int amountInCents = (amount * 100).toInt();
-
-          // Create Checkout Session
-          final response = await http.post(
-            Uri.parse(
-                'https://createcheckoutsession-zkxlm7bvjq-uc.a.run.app/createCheckoutSession'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'amount': amountInCents,
-              'userId': userId, // Pass the user ID
-              'challengeId': challengeId, // Pass the challenge ID
-            }),
-          );
-
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            final sessionUrl = data['sessionUrl'];
-            final sessionId = data['sessionId'];
-
-            if (sessionUrl == null ||
-                sessionUrl.isEmpty ||
-                sessionId == null ||
-                sessionId.isEmpty) {
-              throw Exception('Invalid session URL or ID received.');
-            }
-
-            LogService.info('Received sessionUrl: $sessionUrl');
-
-            // Launch Stripe Checkout
-            final Uri checkoutUri = Uri.parse(sessionUrl);
-            if (await canLaunchUrl(checkoutUri)) {
-              await launchUrl(
-                checkoutUri,
-                mode: LaunchMode
-                    .externalApplication, // Ensures it opens in a new tab
-              );
-
-              // Navigate to the PaymentStatusListener
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PaymentStatusListener(
-                    pledgeAmount: amount,
-                    sessionId: sessionId,
-                    userId: userId,
-                    challengeId: challengeId,
-                  ),
-                ),
-              );
-
-              setState(() {
-                isLoading = false;
-              });
-            } else {
-              throw Exception('Could not launch $sessionUrl');
-            }
-          } else {
-            // Attempt to parse the error message from the response
-            String errorMsg = 'Failed to create checkout session.';
-            try {
-              final errorData = jsonDecode(response.body);
-              if (errorData['error']) {
-                errorMsg = errorData['error']['message'] ?? errorMsg;
-              }
-            } catch (_) {}
-            throw Exception(errorMsg);
-          }
-        } catch (e) {
-          setState(() {
-            isLoading = false;
-          });
-
-          // Handle error during payment
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Payment failed: ${e.toString()}')),
-          );
-        }
-      }
-    } else {
+    await selectPledgeAmount(context, widget.challenge, amount).then((success) {
       setState(() {
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to join the challenge.')),
-      );
-      Navigator.pop(context); // Navigate back to the previous screen
-    }
+
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to join challenge.')),
+        );
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Pledge Amount'),
-      ),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Main Content
+          // Main Content with Extra Bottom Padding
           SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 20),
                 Text(
-                  widget.challenge.challengeTitle,
-                  style: const TextStyle(
-                    fontSize: 24,
+                  "Be A Better You\nIn a Fun Way",
+                  style: TextStyle(
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
+                    fontFamily: 'Poppins',
+                    color: AppColors.mainFGColor,
+                    height: 1.1,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Text(
-                  widget.challenge.challengeDescription,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 20),
-                const Divider(),
-                const SizedBox(height: 10),
-                const Text(
-                  'Choose your pledge amount:',
+                  'Pledge Amount:',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
+                    fontFamily: 'Poppins',
+                    color: AppColors.mainFGColor,
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Pledge Amount Buttons
+                const SizedBox(height: 10),
                 Column(
                   children: pledgeAmounts.map((amount) {
                     double additionalReward = calculateAdditionalReward(amount);
                     double totalReward = amount + additionalReward;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: ElevatedButton(
-                        onPressed: () => selectPledgeAmount(amount),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 16.0, horizontal: 12.0),
-                          backgroundColor: Colors.blueAccent,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
+                    bool isSelected = selectedPledgeAmount == amount;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedPledgeAmount =
+                              amount; // Update selected option
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors
+                                      .mainBgColor // Highlight selected option
+                                  : Colors.grey,
+                              width: isSelected
+                                  ? 2.5
+                                  : 1.0, // Thicker border if selected
+                            ),
                             borderRadius: BorderRadius.circular(8.0),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '\$${amount.toInt()}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: Colors.grey[300],
+                                      radius: 10,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      '\$${amount.toInt()}',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'Poppins',
+                                        color: AppColors.mainFGColor,
+                                      ),
+                                    ),
+                                    if (amount == 55.0)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 8.0),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.mainBgColor,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            'Popular',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'Poppins',
+                                              color: AppColors.mainFGColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'If 50% of the members complete this challenge you will get additional reward. \$${amount.toInt()} + \$${additionalReward.toInt()} (\$${totalReward.toInt()} in total)',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontFamily: 'Poppins',
+                                    color: AppColors.mainFGColor,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'If 50% of the members complete this challenge you will get additional reward. \$${amount.toInt()} + \$${additionalReward.toInt()} (\$${totalReward.toInt()} in total)',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     );
                   }).toList(),
                 ),
+                const SizedBox(
+                    height:
+                        150), // Extra padding for scroll to ensure content visibility
               ],
             ),
           ),
-          // Loading Overlay
-          if (isLoading)
-            const LoadingOverlay(), // Display loading overlay during join operation
+          if (isLoading) const LoadingOverlay(),
+
+          // Close (X) Button at Top Right
+          Positioned(
+            top: 16,
+            right: 16,
+            child: IconButton(
+              icon: Icon(Icons.close, color: AppColors.mainFGColor),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ),
+
+          // Footer Section with Continue Button and Terms and Conditions
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Continue to Payment Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: selectedPledgeAmount != null
+                        ? () => selectPledge(
+                            selectedPledgeAmount!) // Only proceed if an option is selected
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.mainBgColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: Text(
+                      'Continue to Payment',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Poppins',
+                        color: AppColors.mainFGColor,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Terms and Conditions Text Button
+                TextButton(
+                  onPressed: () {
+                    // Handle terms and conditions navigation
+                  },
+                  child: Text(
+                    'Terms and Conditions',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontFamily: 'Poppins',
+                      color: AppColors.mainFGColor,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

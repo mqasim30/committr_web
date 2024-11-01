@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
     double screenHeight = MediaQuery.of(context).size.height;
     double aspectRatio = screenWidth / screenHeight;
 
-    double titleFontSize = (screenHeight * 0.07).roundToDouble();
+    double titleFontSize = (screenHeight * 0.05).roundToDouble();
     double stepGranularity = 1.0;
     bool isNarrowPortrait = aspectRatio < 0.6;
 
@@ -132,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           textAlign: TextAlign.left,
                           style: TextStyle(
                             fontSize: titleFontSize,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w400,
                             fontFamily: 'Poppins',
                             height: 1.1,
                             color: const Color.fromARGB(255, 8, 52, 0),
@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         style: TextStyle(
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w600,
-                                          fontSize: screenHeight * 0.1 * 0.35,
+                                          fontSize: screenHeight * 0.08 * 0.35,
                                           color: const Color.fromARGB(
                                               255, 50, 50, 50),
                                         ),

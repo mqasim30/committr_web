@@ -16,6 +16,19 @@ import '../screens/failed_screen.dart';
 class ActiveChallengesSection extends StatelessWidget {
   const ActiveChallengesSection({super.key});
 
+  /// Helper function to split the title into two lines.
+  /// Places the first word on the first line and the rest on the second line.
+  String splitTitle(String title) {
+    List<String> words = title.split(' ');
+    if (words.length <= 1) {
+      return title;
+    } else {
+      String firstLine = words[0];
+      String secondLine = words.sublist(1).join(' ');
+      return '$firstLine\n$secondLine';
+    }
+  }
+
   Future<double> calculateProgress(Challenge challenge) async {
     final startTime =
         DateTime.fromMillisecondsSinceEpoch(challenge.challengeStartTimestamp);
@@ -65,7 +78,7 @@ class ActiveChallengesSection extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         SizedBox(
-          height: 140,
+          height: 160, // Adjusted height
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: challengeProvider.activeChallenges.length,
@@ -170,18 +183,23 @@ class ActiveChallengesSection extends StatelessWidget {
                   ),
                   child: Container(
                     width: 180,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 10),
+                    padding: const EdgeInsets.only(
+                        left: 10,
+                        right: 10,
+                        top: 5,
+                        bottom: 10), // Reduced top padding
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Header section with Title and Action Button
                         Row(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start, // Align to top
                           children: [
                             Expanded(
                               child: Text(
-                                challenge.challengeTitle,
-                                maxLines: 1,
+                                splitTitle(challenge.challengeTitle),
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
@@ -191,21 +209,25 @@ class ActiveChallengesSection extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF9FE870),
-                                shape: BoxShape.circle,
-                              ),
-                              padding: const EdgeInsets.all(5),
-                              child: const Icon(
-                                Icons.arrow_outward,
-                                color: Color(0xFF083400),
-                                size: 18,
+                            // Adjusted circular button positioning
+                            Transform.translate(
+                              offset: const Offset(0, 5), // Move up by 5 pixels
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF9FE870),
+                                  shape: BoxShape.circle,
+                                ),
+                                padding: const EdgeInsets.all(5),
+                                child: const Icon(
+                                  Icons.arrow_outward,
+                                  color: Color(0xFF083400),
+                                  size: 18,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 7.5),
+                        const SizedBox(height: 12.5),
 
                         // Pledge Amount
                         Text(
@@ -213,11 +235,11 @@ class ActiveChallengesSection extends StatelessWidget {
                           style: const TextStyle(
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w400,
-                            fontSize: 14,
+                            fontSize: 12,
                             color: Color(0xFF083400),
                           ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 10),
                         // Time Left
                         FutureBuilder<String>(
                           future: getTimeLeft(challenge),
@@ -229,7 +251,7 @@ class ActiveChallengesSection extends StatelessWidget {
                               style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontWeight: FontWeight.w400,
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Color(0xFF083400),
                               ),
                             );
