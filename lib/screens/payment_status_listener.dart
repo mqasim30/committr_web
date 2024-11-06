@@ -12,14 +12,14 @@ class PaymentStatusListener extends StatefulWidget {
   final String sessionId;
   final String userId;
   final String challengeId;
-  final double pledgeAmount; // Added pledgeAmount as a parameter
+  final double pledgeAmount;
 
   const PaymentStatusListener({
     super.key,
     required this.sessionId,
     required this.userId,
     required this.challengeId,
-    required this.pledgeAmount, // Initialize pledgeAmount
+    required this.pledgeAmount,
   });
 
   @override

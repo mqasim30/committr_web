@@ -1,7 +1,7 @@
 // lib/widgets/loading_indicator.dart
 
 import 'package:flutter/material.dart';
-import '../models/constants.dart';
+import '../constants/constants.dart';
 
 class LoadingIndicator extends StatelessWidget {
   final double size;

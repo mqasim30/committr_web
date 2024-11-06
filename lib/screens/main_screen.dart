@@ -6,6 +6,8 @@ import '../widgets/available_challenges_section.dart';
 import '../widgets/loading_overlay.dart';
 import '../services/auth_service.dart';
 import '../services/log_service.dart';
+import '../models/user_profile.dart';
+import 'profile_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -55,6 +57,70 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  String calculateDaysAgo(int userJoinDate) {
+    final joinDate = DateTime.fromMillisecondsSinceEpoch(userJoinDate);
+    final currentDate = DateTime.now();
+    final difference = currentDate.difference(joinDate).inDays;
+    return "${difference}D";
+  }
+
+  void _openProfileScreen(BuildContext context) {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final challengeProvider =
+        Provider.of<ChallengeProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        // Using FutureBuilder to wait for async data
+        return FutureBuilder<UserProfile?>(
+          future: authService.getCurrentUserProfile(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              // Show a loading indicator while waiting for data
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              // Handle error, if any
+              return AlertDialog(
+                title: const Text("Error"),
+                content: const Text("Failed to load user profile."),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text("OK"),
+                  ),
+                ],
+              );
+            }
+
+            // Extract user profile data or use defaults if null
+            final UserProfile? userProfile = snapshot.data;
+            final int peopleInvitedCount = userProfile?.userInvited ?? 0;
+            final String name =
+                authService.currentUser?.displayName ?? "Unknown User";
+            final String? profilePictureUrl = authService.currentUser?.photoURL;
+            final int challengesCount =
+                challengeProvider.activeChallenges.length;
+            final int wonCount = 0;
+            final String joinedDate =
+                calculateDaysAgo(userProfile!.userJoinDate);
+
+            return ProfilePage(
+              name: name,
+              profilePictureUrl: profilePictureUrl,
+              challengesCount: challengesCount,
+              wonCount: wonCount,
+              peopleInvitedCount: peopleInvitedCount,
+              joinedDate: joinedDate,
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final challengeProvider = Provider.of<ChallengeProvider>(context);
@@ -83,15 +149,18 @@ class _MainScreenState extends State<MainScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Profile Picture
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundImage: user?.photoURL != null
-                              ? NetworkImage(user!.photoURL!)
-                              : null,
-                          child: user?.photoURL == null
-                              ? const Icon(Icons.person, size: 30)
-                              : null, // Placeholder icon
+                        // Profile Picture with GestureDetector to open Profile Screen as modal
+                        GestureDetector(
+                          onTap: () => _openProfileScreen(context),
+                          child: CircleAvatar(
+                            radius: 20,
+                            backgroundImage: user?.photoURL != null
+                                ? NetworkImage(user!.photoURL!)
+                                : null,
+                            child: user?.photoURL == null
+                                ? const Icon(Icons.person, size: 30)
+                                : null, // Placeholder icon
+                          ),
                         ),
                         // User Greeting Section
                         Padding(
@@ -136,72 +205,6 @@ class _MainScreenState extends State<MainScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-
-                    // // Row with Leaderboard and Invite buttons
-                    // Row(
-                    //   children: [
-                    //     // Leaderboard button with 65% width
-                    //     Expanded(
-                    //       flex: 65,
-                    //       child: ElevatedButton.icon(
-                    //         onPressed: () {
-                    //           // Navigate to Leaderboard screen
-                    //         },
-                    //         icon: const Icon(Icons.emoji_events_outlined,
-                    //             color: Color(0xFF083400), size: 20),
-                    //         label: const Text(
-                    //           'Leaderboard',
-                    //           style: TextStyle(
-                    //             fontFamily: 'Poppins',
-                    //             fontWeight: FontWeight.w400,
-                    //             fontSize: 16,
-                    //             color: Color(0xFF083400),
-                    //           ),
-                    //         ),
-                    //         style: ElevatedButton.styleFrom(
-                    //           backgroundColor: Color(0xfff7f2fa),
-                    //           shape: RoundedRectangleBorder(
-                    //             borderRadius: BorderRadius.circular(15),
-                    //           ),
-                    //           elevation: 4, // Add elevation for shadow
-                    //           shadowColor: Colors.grey.withOpacity(0.5),
-                    //           padding: const EdgeInsets.symmetric(vertical: 15),
-                    //         ),
-                    //       ),
-                    //     ),
-                    //     const SizedBox(width: 10),
-
-                    //     // Invite button with 35% width
-                    //     Expanded(
-                    //       flex: 35,
-                    //       child: ElevatedButton.icon(
-                    //         onPressed: () {
-                    //           // Navigate to Invite screen or share functionality
-                    //         },
-                    //         icon: const Icon(Icons.favorite_border,
-                    //             color: Color(0xFF083400), size: 20),
-                    //         label: const Text(
-                    //           'Invite',
-                    //           style: TextStyle(
-                    //             fontFamily: 'Poppins',
-                    //             fontWeight: FontWeight.w400,
-                    //             fontSize: 16,
-                    //             color: Color(0xFF083400),
-                    //           ),
-                    //         ),
-                    //         style: ElevatedButton.styleFrom(
-                    //           backgroundColor: Color(0xfff7f2fa),
-                    //           shape: RoundedRectangleBorder(
-                    //             borderRadius: BorderRadius.circular(15),
-                    //           ),
-                    //           elevation: 4, // Add elevation for shadow
-                    //           shadowColor: Colors.grey.withOpacity(0.5),
-                    //           padding: const EdgeInsets.symmetric(vertical: 15),
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
 
                     const SizedBox(height: 20),
 

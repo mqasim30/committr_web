@@ -11,7 +11,7 @@ import '../widgets/step_card.dart';
 import '../widgets/user_challenge_info_card.dart';
 import '../widgets/rules_card.dart'; // Import the RulesCard widget
 import 'pledge_amount_selection_screen.dart';
-import '../models/constants.dart';
+import '../constants/constants.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final Challenge challenge;

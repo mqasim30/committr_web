@@ -5,7 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import '../services/log_service.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
-import '../models/constants.dart';
+import '../constants/constants.dart';
 
 class OathScreen extends StatefulWidget {
   final String userId;

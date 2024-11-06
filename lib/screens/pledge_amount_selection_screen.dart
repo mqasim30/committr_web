@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/challenge.dart';
 import '../services/select_pledge_service.dart';
 import '../widgets/loading_overlay.dart';
-import '../models/constants.dart';
+import '../constants/constants.dart';
 
 class PledgeAmountSelectionScreen extends StatefulWidget {
   final Challenge challenge;

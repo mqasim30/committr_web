@@ -8,7 +8,6 @@ import 'database_service.dart';
 import '../models/user_profile.dart';
 import 'ip_service.dart';
 import 'geolocation_service.dart';
-//import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'server_time_service.dart';
 
 class AuthService {
@@ -55,14 +54,10 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       if (kIsWeb) {
-        // Web platform: Use signInWithPopup
         LogService.info("Attempting Google Sign-In on Web");
 
         // Create a new provider
         GoogleAuthProvider googleProvider = GoogleAuthProvider();
-
-        // Optionally add any scopes or custom parameters
-        // googleProvider.addScope('https://www.googleapis.com/auth/contacts.readonly');
 
         UserCredential userCredential =
             await _auth.signInWithPopup(googleProvider);
@@ -87,55 +82,12 @@ class AuthService {
           LogService.warning("User is null after sign-in");
           return null;
         }
-      } else {
-        // Mobile platform: Use GoogleSignIn
-        LogService.info("Attempting Google Sign-In on Mobile");
-
-        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-        if (googleUser == null) {
-          LogService.warning("Google Sign-In canceled by user");
-          return null;
-        }
-        LogService.info(
-            "Google Sign-In successful. Fetching authentication details.");
-
-        final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
-        LogService.info("Authentication details obtained");
-
-        final AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        LogService.info("Auth credentials created");
-
-        UserCredential userCredential =
-            await _auth.signInWithCredential(credential);
-        LogService.info("Signed in with credential");
-
-        User? user = userCredential.user;
-        if (user != null) {
-          LogService.info("User signed in: ${user.displayName}, ${user.email}");
-
-          // Update user profile
-          bool updateResult = await updateUserProfileForUser(user.uid);
-          if (updateResult) {
-            LogService.info(
-                "User profile updated successfully for ${user.uid}");
-          } else {
-            LogService.error("Failed to update user profile for ${user.uid}");
-          }
-
-          return user;
-        } else {
-          LogService.warning("User is null after sign-in");
-          return null;
-        }
       }
     } catch (e, stackTrace) {
       LogService.error("Error during Google Sign-In", e, stackTrace);
       return null;
     }
+    return null;
   }
 
   /// Updates the user profile with the latest IP, country, active date, and platform.
@@ -235,6 +187,19 @@ class AuthService {
       LogService.info("No user currently signed in");
     }
     return user;
+  }
+
+  Future<UserProfile?> getCurrentUserProfile() async {
+    LogService.info("Retrieving current user profile");
+    User? user = _auth.currentUser;
+    UserProfile? userProfile;
+    if (user != null) {
+      userProfile = await _databaseService.readUserProfile(user.uid);
+    } else {
+      LogService.info("No user currently signed in");
+      return null;
+    }
+    return userProfile;
   }
 
   /// Getter for the currently signed-in [User].

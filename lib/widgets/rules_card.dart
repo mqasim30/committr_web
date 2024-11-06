@@ -1,7 +1,7 @@
 // lib/widgets/rules_card.dart
 
 import 'package:flutter/material.dart';
-import '../models/constants.dart';
+import '../constants/constants.dart';
 
 class RulesCard extends StatelessWidget {
   final String ruleText;

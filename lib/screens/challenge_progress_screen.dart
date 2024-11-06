@@ -1,14 +1,13 @@
-// lib/screens/challenge_progress_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import '../constants/constants.dart';
 import '../providers/challenge_provider.dart';
 import '../models/challenge.dart';
+import '../services/server_time_service.dart';
 import '../utils/challenge_helper.dart';
-import '../services/log_service.dart'; // Import LogService
-import 'dart:convert'; // For jsonEncode
-import '../services/server_time_service.dart'; // Import ServerTimeService
+import '../services/log_service.dart';
+import '../widgets/rules_card.dart';
+import '../widgets/custom_progress_bar.dart';
 
 class ChallengeProgressScreen extends StatefulWidget {
   final Challenge challenge;
@@ -37,7 +36,6 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
       });
     } catch (e) {
       LogService.error("Error fetching server time: $e");
-      // Handle error appropriately, maybe set a default time or show an error message
     }
   }
 
@@ -47,264 +45,301 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
     final userChallengeDetail =
         challengeProvider.userChallenges[widget.challenge.challengeId];
 
-    // Log the entire userChallengeDetail
-    LogService.info(
-        "UserChallengeDetail for challengeId ${widget.challenge.challengeId}: ${userChallengeDetail != null ? jsonEncode(userChallengeDetail.toMap()) : 'null'}");
-
-    if (userChallengeDetail == null) {
-      LogService.info(
-          "UserChallengeDetail is null for challengeId: ${widget.challenge.challengeId}");
+    if (_currentDate == null || userChallengeDetail == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Challenge Progress'),
-        ),
-        body: const Center(
-          child: Text('You have not joined this challenge yet.'),
-        ),
-      );
-    }
-
-    if (_currentDate == null) {
-      // Show loading indicator while fetching server time
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Challenge Progress'),
-        ),
+        backgroundColor: Colors.white,
         body: const Center(
           child: CircularProgressIndicator(),
         ),
       );
     }
 
+    // Retrieve weight data
+    final startingWeight = userChallengeDetail.challengeData['startingWeight'];
+    final currentWeight = userChallengeDetail.challengeData['currentWeight'];
+    final weightUnit = userChallengeDetail.challengeData['weightUnit'] ?? 'kg';
     final challengeType =
         ChallengeHelper.getChallengeType(widget.challenge.challengeTitle);
 
-    LogService.info("Challenge Type: $challengeType");
+    // Check and parse weight data
+    double? startingWeightValue = _parseWeight(startingWeight);
+    double? currentWeightValue = _parseWeight(currentWeight);
 
-    // Retrieve weights as doubles
-    final startingWeight = userChallengeDetail.challengeData['startingWeight'];
-    final currentWeight = userChallengeDetail.challengeData['currentWeight'];
-    final weightUnit = userChallengeDetail.challengeData['weightUnit'] ??
-        'kg'; // Default to kg
-
-    LogService.info("startingWeight from challengeData: $startingWeight");
-    LogService.info("currentWeight from challengeData: $currentWeight");
-    LogService.info("weightUnit from challengeData: $weightUnit");
-
-    if (startingWeight == null || currentWeight == null) {
-      LogService.error(
-          "Weight data is missing. startingWeight or currentWeight is null.");
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Challenge Progress'),
-        ),
-        body: const Center(
-          child:
-              Text('Weight data is not available yet. Please try again later.'),
-        ),
-      );
-    }
-
-    // Convert weights to double if they are not already
-    double? startingWeightValue;
-    double? currentWeightValue;
-
-    if (startingWeight is double) {
-      startingWeightValue = startingWeight;
-    } else if (startingWeight is int) {
-      startingWeightValue = startingWeight.toDouble();
-    } else {
-      startingWeightValue = double.tryParse(startingWeight.toString());
-    }
-
-    if (currentWeight is double) {
-      currentWeightValue = currentWeight;
-    } else if (currentWeight is int) {
-      currentWeightValue = currentWeight.toDouble();
-    } else {
-      currentWeightValue = double.tryParse(currentWeight.toString());
-    }
-
-    LogService.info("Parsed startingWeightValue: $startingWeightValue");
-    LogService.info("Parsed currentWeightValue: $currentWeightValue");
-
-    if (startingWeightValue == null || currentWeightValue == null) {
-      LogService.error(
-          "Failed to parse weights. startingWeightValue or currentWeightValue is null.");
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Challenge Progress'),
-        ),
-        body: const Center(
-          child:
-              Text('Weight data is invalid. Please check your weight entries.'),
-        ),
-      );
-    }
-
-    final startDateTimestamp =
-        widget.challenge.challengeStartTimestamp; // From Challenge object
-    final endDateTimestamp =
-        widget.challenge.challengeEndTimestamp; // From Challenge object
-    final startDate =
-        DateTime.fromMillisecondsSinceEpoch(startDateTimestamp, isUtc: false);
-    final endDate =
-        DateTime.fromMillisecondsSinceEpoch(endDateTimestamp, isUtc: false);
+    final startDate = DateTime.fromMillisecondsSinceEpoch(
+        widget.challenge.challengeStartTimestamp);
+    final endDate = DateTime.fromMillisecondsSinceEpoch(
+        widget.challenge.challengeEndTimestamp);
     final currentDate = _currentDate!;
-
     final progress =
         ChallengeHelper.calculateProgress(startDate, endDate, currentDate);
     final daysLeft = ChallengeHelper.calculateDaysLeft(endDate, currentDate);
-    final goalWeight =
-        ChallengeHelper.calculateGoalWeight(challengeType, startingWeightValue);
+    final goalWeight = ChallengeHelper.calculateGoalWeight(
+        challengeType, startingWeightValue!);
 
-    LogService.info("Progress: $progress");
-    LogService.info("Days Left: $daysLeft");
-    LogService.info("Goal Weight: $goalWeight");
-
-    // For Maintain Weight, define a range
-    Map<String, double>? weightRange;
-    if (challengeType == ChallengeType.MaintainWeight && goalWeight != null) {
-      weightRange = ChallengeHelper.calculateMaintainWeightRange(goalWeight);
-      LogService.info("Weight Range: $weightRange");
-    }
-
-    // Format dates for display
-    final formattedStartDate = DateFormat.yMMMd().format(startDate);
-    final formattedEndDate = DateFormat.yMMMd().format(endDate);
-
-    // Adjust goalWeight and weightRange for units if needed
-    double? adjustedGoalWeight = goalWeight;
-    Map<String, double>? adjustedWeightRange = weightRange;
-
-    if (weightUnit == 'lb') {
-      // Convert kg to lb
-      if (adjustedGoalWeight != null) {
-        adjustedGoalWeight = adjustedGoalWeight * 2.20462;
-      }
-      if (adjustedWeightRange != null) {
-        adjustedWeightRange = {
-          'lower': adjustedWeightRange['lower']! * 2.20462,
-          'upper': adjustedWeightRange['upper']! * 2.20462,
-        };
-      }
-      LogService.info(
-          "Adjusted Goal Weight for lb: $adjustedGoalWeight, Adjusted Weight Range: $adjustedWeightRange");
-    }
+    // Adjust weight units if needed
+    final adjustedGoalWeight =
+        weightUnit == 'lb' ? goalWeight! * 2.20462 : goalWeight;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Challenge Progress'),
-      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Challenge Timeline
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Custom Header
+            _buildHeader(context),
+
+            const SizedBox(height: 16),
+
+            // Challenge Description Card
+            _buildDescriptionCard(widget.challenge),
+
+            const SizedBox(height: 16),
+
+            // Weight Information using cards
+            _buildWeightInfo(
+              currentWeight: currentWeightValue,
+              startingWeight: startingWeightValue,
+              goalWeight: adjustedGoalWeight,
+              weightUnit: weightUnit,
+              daysLeft: daysLeft,
+              challengeType: challengeType,
+            ),
+
+            const SizedBox(height: 20),
+
+            // Challenge Progress Bar
+            const Text(
+              'Progress',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Poppins',
+                  color: AppColors.mainFGColor),
+            ),
+            const SizedBox(height: 10),
+            CustomProgressBar(progress: progress), // Custom progress widget
+            const SizedBox(height: 20),
+
+            // Rules Section
+            const Text(
+              'Rules:',
+              style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Poppins',
+                  fontSize: 18,
+                  color: AppColors.mainFGColor),
+            ),
+            const SizedBox(height: 10),
+            ...widget.challenge.rules.asMap().entries.map(
+                  (entry) => RulesCard(
+                    ruleText: entry.value,
+                    ruleIndex: entry.key,
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper function to parse weights
+  double? _parseWeight(dynamic weight) {
+    if (weight is double) return weight;
+    if (weight is int) return weight.toDouble();
+    return double.tryParse(weight.toString());
+  }
+
+  // Custom Header Builder
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildCircleIconButton(context, Icons.arrow_back, () {
+          Navigator.pop(context);
+        }),
+        Expanded(
+          child: Column(
+            children: [
+              Text(
+                'Challenge:',
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 16,
+                  color: AppColors.mainFGColor,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                widget.challenge.challengeTitle,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w400,
+                  fontSize: 18,
+                  color: AppColors.mainFGColor,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        _buildCircleIconButton(context, Icons.share, () {
+          // Add share functionality
+        }),
+      ],
+    );
+  }
+
+  Widget _buildCircleIconButton(
+      BuildContext context, IconData icon, VoidCallback onPressed) {
+    return Container(
+      padding: const EdgeInsets.all(1.0),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.mainFGColor, width: 2),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: AppColors.mainFGColor),
+        onPressed: onPressed,
+      ),
+    );
+  }
+
+  Widget _buildDescriptionCard(Challenge challenge) {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(
+            maxWidth: 400,
+            minHeight: 120), // Adjust minHeight for desired 4-line space
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
               children: [
                 Text(
-                  'Start Date: $formattedStartDate',
+                  "\"${challenge.challengeDescription}\"",
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  'End Date: $formattedEndDate',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w500),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w400,
+                    fontFamily: 'Poppins',
+                    color: AppColors.mainFGColor,
+                    height: 1.5, // Line height for readability
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 10, // Limit the number of lines if needed
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+          ),
+        ),
+      ),
+    );
+  }
 
-            // Progress Bar
-            const Text(
-              'Progress',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+  // Weight Info Section Builder with Cards
+  Widget _buildWeightInfo({
+    required double? currentWeight,
+    required double? startingWeight,
+    required double? goalWeight,
+    required String weightUnit,
+    required int daysLeft,
+    required ChallengeType challengeType,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _ChallengeInfoCard(
+              title: "Current Weight",
+              value: currentWeight != null
+                  ? "${currentWeight.toStringAsFixed(1)} $weightUnit"
+                  : "N/A",
             ),
-            const SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: progress,
-              minHeight: 20,
-              backgroundColor: Colors.grey[300],
-              color: Colors.blue,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              '${(progress * 100).toStringAsFixed(1)}% completed',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-
-            // Days Left
-            Text(
-              'Days Left: $daysLeft',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 30),
-
-            // Current Weight
-            Text(
-              'Current Weight: ${currentWeightValue.toStringAsFixed(1)} $weightUnit',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 10),
-
-            // Starting Weight
-            Text(
-              'Starting Weight: ${startingWeightValue.toStringAsFixed(1)} $weightUnit',
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 10),
-
-            // Goal Weight
-            if (challengeType != ChallengeType.MaintainWeight &&
-                adjustedGoalWeight != null)
-              Text(
-                'Goal Weight: ${adjustedGoalWeight.toStringAsFixed(1)} $weightUnit',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              )
-            else if (challengeType == ChallengeType.MaintainWeight &&
-                adjustedWeightRange != null)
-              Text(
-                'Maintain Weight between ${adjustedWeightRange['lower']!.toStringAsFixed(1)} $weightUnit and ${adjustedWeightRange['upper']!.toStringAsFixed(1)} $weightUnit',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            const SizedBox(height: 30),
-
-            // Optional: Additional Challenge Details
-            const Text(
-              'Challenge Details:',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.challenge.challengeDescription,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-
-            // Rules
-            const Text(
-              'Rules:',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            ...widget.challenge.rules.map(
-              (rule) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Text(
-                  rule,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
+            const SizedBox(width: 8),
+            _ChallengeInfoCard(
+              title: "Starting Weight",
+              value: startingWeight != null
+                  ? "${startingWeight.toStringAsFixed(1)} $weightUnit"
+                  : "N/A",
             ),
           ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _ChallengeInfoCard(
+              title: "Goal Weight",
+              value: goalWeight != null
+                  ? "${goalWeight.toStringAsFixed(1)} $weightUnit"
+                  : "N/A",
+            ),
+            const SizedBox(width: 8),
+            _ChallengeInfoCard(
+              title: "Days Left",
+              value: "$daysLeft",
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Custom widget for displaying challenge information in a card format
+class _ChallengeInfoCard extends StatelessWidget {
+  final String title;
+  final String value;
+
+  const _ChallengeInfoCard({
+    super.key,
+    required this.title,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: Column(
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 24,
+                  color: AppColors.mainFGColor,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: AppColors.mainFGColor,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

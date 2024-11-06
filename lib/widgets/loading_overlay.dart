@@ -1,7 +1,7 @@
 // lib/widgets/loading_overlay.dart
 
 import 'package:flutter/material.dart';
-import '../models/constants.dart';
+import '../constants/constants.dart';
 import 'loading_indicator.dart';
 
 class LoadingOverlay extends StatelessWidget {
