@@ -1,3 +1,5 @@
+// lib/widgets/reduce_screen_time_oath_widget.dart
+
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
@@ -6,9 +8,13 @@ import '../services/log_service.dart';
 
 class ReduceScreenTimeOathWidget extends StatefulWidget {
   final Function(Uint8List imageBytes) onSubmit;
+  final bool isLoading;
 
-  const ReduceScreenTimeOathWidget({Key? key, required this.onSubmit})
-      : super(key: key);
+  const ReduceScreenTimeOathWidget({
+    Key? key,
+    required this.onSubmit,
+    required this.isLoading,
+  }) : super(key: key);
 
   @override
   _ReduceScreenTimeOathWidgetState createState() =>
@@ -137,22 +143,26 @@ class _ReduceScreenTimeOathWidgetState
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: _submit,
+            onPressed: widget.isLoading ? null : _submit,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.mainBgColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
             ),
-            child: Text(
-              'Submit Oath',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Poppins',
-                color: AppColors.mainFGColor,
-              ),
-            ),
+            child: widget.isLoading
+                ? CircularProgressIndicator(
+                    color: AppColors.mainFGColor,
+                  )
+                : Text(
+                    'Submit Oath',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                      color: AppColors.mainFGColor,
+                    ),
+                  ),
           ),
         ),
       ],

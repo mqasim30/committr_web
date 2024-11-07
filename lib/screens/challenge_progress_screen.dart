@@ -1,18 +1,27 @@
+// lib/screens/challenge_progress_screen.dart
+
+import 'package:Committr/widgets/loading_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/constants.dart';
 import '../providers/challenge_provider.dart';
 import '../models/challenge.dart';
+import '../models/user_challenge_detail.dart';
 import '../services/server_time_service.dart';
 import '../utils/challenge_helper.dart';
 import '../services/log_service.dart';
 import '../widgets/rules_card.dart';
 import '../widgets/custom_progress_bar.dart';
+import '../services/auth_service.dart';
+import '../widgets/weight_challenge_progress_widget.dart';
+import '../widgets/reduce_screen_time_progress_widget.dart';
+import '../widgets/wake_up_early_progress_widget.dart';
 
 class ChallengeProgressScreen extends StatefulWidget {
   final Challenge challenge;
 
-  const ChallengeProgressScreen({super.key, required this.challenge});
+  const ChallengeProgressScreen({Key? key, required this.challenge})
+      : super(key: key);
 
   @override
   _ChallengeProgressScreenState createState() =>
@@ -21,64 +30,52 @@ class ChallengeProgressScreen extends StatefulWidget {
 
 class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
   DateTime? _currentDate;
+  late ChallengeType _challengeType;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _challengeType =
+        ChallengeHelper.getChallengeType(widget.challenge.challengeTitle);
     _fetchServerTime();
   }
 
+  /// Fetches the current server time using ServerTimeService
   Future<void> _fetchServerTime() async {
     try {
       DateTime serverTime = await ServerTimeService.getServerTime();
       setState(() {
         _currentDate = serverTime;
+        _isLoading = false;
       });
     } catch (e) {
       LogService.error("Error fetching server time: $e");
+      setState(() {
+        _isLoading = false;
+      });
+      // Optionally, show an error message to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to fetch server time.')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final challengeProvider = Provider.of<ChallengeProvider>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
     final userChallengeDetail =
         challengeProvider.userChallenges[widget.challenge.challengeId];
 
-    if (_currentDate == null || userChallengeDetail == null) {
+    if (_isLoading || userChallengeDetail == null) {
       return Scaffold(
         backgroundColor: Colors.white,
         body: const Center(
-          child: CircularProgressIndicator(),
+          child: LoadingOverlay(),
         ),
       );
     }
-
-    // Retrieve weight data
-    final startingWeight = userChallengeDetail.challengeData['startingWeight'];
-    final currentWeight = userChallengeDetail.challengeData['currentWeight'];
-    final weightUnit = userChallengeDetail.challengeData['weightUnit'] ?? 'kg';
-    final challengeType =
-        ChallengeHelper.getChallengeType(widget.challenge.challengeTitle);
-
-    // Check and parse weight data
-    double? startingWeightValue = _parseWeight(startingWeight);
-    double? currentWeightValue = _parseWeight(currentWeight);
-
-    final startDate = DateTime.fromMillisecondsSinceEpoch(
-        widget.challenge.challengeStartTimestamp);
-    final endDate = DateTime.fromMillisecondsSinceEpoch(
-        widget.challenge.challengeEndTimestamp);
-    final currentDate = _currentDate!;
-    final progress =
-        ChallengeHelper.calculateProgress(startDate, endDate, currentDate);
-    final daysLeft = ChallengeHelper.calculateDaysLeft(endDate, currentDate);
-    final goalWeight = ChallengeHelper.calculateGoalWeight(
-        challengeType, startingWeightValue!);
-
-    // Adjust weight units if needed
-    final adjustedGoalWeight =
-        weightUnit == 'lb' ? goalWeight! * 2.20462 : goalWeight;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -89,69 +86,25 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
           children: [
             // Custom Header
             _buildHeader(context),
-
             const SizedBox(height: 16),
-
             // Challenge Description Card
             _buildDescriptionCard(widget.challenge),
-
             const SizedBox(height: 16),
-
-            // Weight Information using cards
-            _buildWeightInfo(
-              currentWeight: currentWeightValue,
-              startingWeight: startingWeightValue,
-              goalWeight: adjustedGoalWeight,
-              weightUnit: weightUnit,
-              daysLeft: daysLeft,
-              challengeType: challengeType,
-            ),
-
+            // Build Challenge Specific UI
+            _buildChallengeSpecificUI(userChallengeDetail, authService),
             const SizedBox(height: 20),
-
             // Challenge Progress Bar
-            const Text(
-              'Progress',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Poppins',
-                  color: AppColors.mainFGColor),
-            ),
-            const SizedBox(height: 10),
-            CustomProgressBar(progress: progress), // Custom progress widget
+            _buildProgressBar(),
             const SizedBox(height: 20),
-
             // Rules Section
-            const Text(
-              'Rules:',
-              style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'Poppins',
-                  fontSize: 18,
-                  color: AppColors.mainFGColor),
-            ),
-            const SizedBox(height: 10),
-            ...widget.challenge.rules.asMap().entries.map(
-                  (entry) => RulesCard(
-                    ruleText: entry.value,
-                    ruleIndex: entry.key,
-                  ),
-                ),
+            _buildRulesSection(),
           ],
         ),
       ),
     );
   }
 
-  // Helper function to parse weights
-  double? _parseWeight(dynamic weight) {
-    if (weight is double) return weight;
-    if (weight is int) return weight.toDouble();
-    return double.tryParse(weight.toString());
-  }
-
-  // Custom Header Builder
+  /// Builds the custom header with back and share buttons
   Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -162,9 +115,9 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
         Expanded(
           child: Column(
             children: [
-              Text(
+              const Text(
                 'Challenge:',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontWeight: FontWeight.w400,
                   fontSize: 16,
@@ -187,13 +140,14 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
             ],
           ),
         ),
-        _buildCircleIconButton(context, Icons.share, () {
-          // Add share functionality
-        }),
+        const SizedBox(
+          width: 40,
+        )
       ],
     );
   }
 
+  /// Builds a circular icon button with border
   Widget _buildCircleIconButton(
       BuildContext context, IconData icon, VoidCallback onPressed) {
     return Container(
@@ -209,6 +163,7 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
     );
   }
 
+  /// Builds the challenge description card
   Widget _buildDescriptionCard(Challenge challenge) {
     return Center(
       child: Container(
@@ -245,102 +200,93 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
     );
   }
 
-  // Weight Info Section Builder with Cards
-  Widget _buildWeightInfo({
-    required double? currentWeight,
-    required double? startingWeight,
-    required double? goalWeight,
-    required String weightUnit,
-    required int daysLeft,
-    required ChallengeType challengeType,
-  }) {
+  /// Builds the challenge-specific widget based on the challenge type
+  Widget _buildChallengeSpecificUI(
+      UserChallengeDetail userChallengeDetail, AuthService authService) {
+    switch (_challengeType) {
+      case ChallengeType.Lose4Percent:
+      case ChallengeType.Lose10Percent:
+      case ChallengeType.MaintainWeight:
+        return WeightChallengeProgressWidget(
+          challenge: widget.challenge,
+          userChallengeDetail: userChallengeDetail,
+          currentDate: _currentDate!,
+        );
+      case ChallengeType.ReduceScreenTime:
+        return ReduceScreenTimeProgressWidget(
+          challenge: widget.challenge,
+          userChallengeDetail: userChallengeDetail,
+          currentDate: _currentDate!,
+        );
+      case ChallengeType.WakeUpEarly:
+        return WakeUpEarlyProgressWidget(
+          challenge: widget.challenge,
+          userChallengeDetail: userChallengeDetail,
+          authService: authService,
+          currentDate: _currentDate!,
+        );
+      default:
+        return const Center(
+          child: Text(
+            'Challenge type not supported.',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              color: AppColors.mainFGColor,
+            ),
+          ),
+        );
+    }
+  }
+
+  /// Builds the progress bar section
+  Widget _buildProgressBar() {
+    final startDate = DateTime.fromMillisecondsSinceEpoch(
+        widget.challenge.challengeStartTimestamp);
+    final endDate = DateTime.fromMillisecondsSinceEpoch(
+        widget.challenge.challengeEndTimestamp);
+    final currentDate = _currentDate!;
+    final progress =
+        ChallengeHelper.calculateProgress(startDate, endDate, currentDate);
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _ChallengeInfoCard(
-              title: "Current Weight",
-              value: currentWeight != null
-                  ? "${currentWeight.toStringAsFixed(1)} $weightUnit"
-                  : "N/A",
-            ),
-            const SizedBox(width: 8),
-            _ChallengeInfoCard(
-              title: "Starting Weight",
-              value: startingWeight != null
-                  ? "${startingWeight.toStringAsFixed(1)} $weightUnit"
-                  : "N/A",
-            ),
-          ],
+        const Text(
+          'Progress',
+          style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Poppins',
+              color: AppColors.mainFGColor),
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _ChallengeInfoCard(
-              title: "Goal Weight",
-              value: goalWeight != null
-                  ? "${goalWeight.toStringAsFixed(1)} $weightUnit"
-                  : "N/A",
-            ),
-            const SizedBox(width: 8),
-            _ChallengeInfoCard(
-              title: "Days Left",
-              value: "$daysLeft",
-            ),
-          ],
-        ),
+        const SizedBox(height: 10),
+        CustomProgressBar(progress: progress), // Custom progress widget
       ],
     );
   }
-}
 
-// Custom widget for displaying challenge information in a card format
-class _ChallengeInfoCard extends StatelessWidget {
-  final String title;
-  final String value;
-
-  const _ChallengeInfoCard({
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+  /// Builds the rules section of the challenge
+  Widget _buildRulesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Rules:',
+          style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              color: AppColors.mainFGColor),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: Column(
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 24,
-                  color: AppColors.mainFGColor,
-                  fontFamily: 'Poppins',
-                ),
+        const SizedBox(height: 10),
+        ...widget.challenge.rules.asMap().entries.map(
+              (entry) => RulesCard(
+                ruleText: entry.value,
+                ruleIndex: entry.key,
               ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.mainFGColor,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
+      ],
     );
   }
 }

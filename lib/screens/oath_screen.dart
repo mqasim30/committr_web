@@ -1,63 +1,70 @@
-import 'dart:typed_data';
+// lib/screens/oath_screen.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:file_selector/file_selector.dart';
-import '../services/log_service.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../constants/constants.dart';
+import '../models/challenge.dart';
+import '../utils/challenge_helper.dart';
+import '../services/log_service.dart';
+import '../widgets/weight_oath_widget.dart';
+import '../widgets/reduce_screen_time_oath_widget.dart';
+import '../widgets/wake_up_early_oath_widget.dart';
+import '../services/server_time_service.dart';
 
 class OathScreen extends StatefulWidget {
   final String userId;
   final String challengeId;
 
   const OathScreen({
-    super.key,
+    Key? key,
     required this.userId,
     required this.challengeId,
-  });
+  }) : super(key: key);
 
   @override
   _OathScreenState createState() => _OathScreenState();
 }
 
 class _OathScreenState extends State<OathScreen> {
-  final _formKey = GlobalKey<FormState>();
-  double? _currentWeight;
-  String _weightUnit = 'kg';
-  XFile? _selectedImage;
-  Uint8List? _selectedImageBytes;
   bool _isLoading = false;
+  Challenge? _challenge;
+  ChallengeType _challengeType = ChallengeType.Unknown;
 
-  Future<void> _pickImage() async {
+  @override
+  void initState() {
+    super.initState();
+    _fetchChallenge();
+  }
+
+  Future<void> _fetchChallenge() async {
     try {
-      final XTypeGroup typeGroup =
-          XTypeGroup(label: 'images', extensions: ['jpg', 'jpeg', 'png']);
-      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
-
-      if (file != null) {
-        final Uint8List bytes = await file.readAsBytes();
-
-        if (!mounted) return;
-
+      DatabaseReference challengeRef = FirebaseDatabase.instance
+          .ref()
+          .child('CHALLENGES')
+          .child(widget.challengeId);
+      DataSnapshot snapshot = await challengeRef.get();
+      if (snapshot.exists) {
+        Map<String, dynamic> challengeMap =
+            Map<String, dynamic>.from(snapshot.value as Map);
+        Challenge challenge = Challenge.fromMap(challengeMap);
         setState(() {
-          _selectedImage = file;
-          _selectedImageBytes = bytes;
+          _challenge = challenge;
+          _challengeType =
+              ChallengeHelper.getChallengeType(_challenge!.challengeTitle);
         });
-
-        LogService.info("Image selected: ${_selectedImage!.name}");
+      } else {
+        LogService.warning(
+            "Challenge with ID ${widget.challengeId} does not exist.");
       }
-    } catch (e) {
-      LogService.error("Error picking image: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to pick image.')),
-      );
+    } catch (e, stackTrace) {
+      LogService.error(
+          "Error fetching Challenge ${widget.challengeId}: $e", e, stackTrace);
     }
   }
 
-  Future<String?> _uploadImage() async {
-    if (_selectedImageBytes == null) return null;
-
+  Future<String?> _uploadImage(Uint8List imageBytes) async {
     try {
       String fileName = 'oath_${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference storageRef = FirebaseStorage.instance
@@ -66,10 +73,9 @@ class _OathScreenState extends State<OathScreen> {
           .child(widget.challengeId)
           .child(fileName);
 
-      UploadTask uploadTask = storageRef.putData(_selectedImageBytes!);
+      UploadTask uploadTask = storageRef.putData(imageBytes);
 
       TaskSnapshot snapshot = await uploadTask;
-
       String downloadUrl = await snapshot.ref.getDownloadURL();
       LogService.info(
           "Image uploaded successfully. Download URL: $downloadUrl");
@@ -80,38 +86,41 @@ class _OathScreenState extends State<OathScreen> {
     }
   }
 
-  Future<void> _submitOath() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedImageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please upload an image.')),
-      );
-      return;
-    }
-
-    _formKey.currentState!.save();
-
+  Future<void> _submitOath(
+    TimeOfDay? wakeUpTime,
+    Uint8List imageBytes,
+    int timeDifferenceMillis,
+    String deviceTimeZone,
+  ) async {
     setState(() {
       _isLoading = true;
     });
 
-    String? imageUrl = await _uploadImage();
-
-    if (imageUrl == null) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Failed to upload image. Please try again.')),
-      );
-      return;
-    }
-
     try {
-      double weightValue = _currentWeight!;
-      String unit = _weightUnit;
+      String? imageUrl = await _uploadImage(imageBytes);
+      if (imageUrl == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Failed to upload image. Please try again.')),
+        );
+        return;
+      }
+
+      Map<String, dynamic> dataToUpdate = {
+        'IsOathTaken': true,
+        'ChallengeData': {
+          if (wakeUpTime != null)
+            'wakeUpTime':
+                '${wakeUpTime.hour}:${wakeUpTime.minute.toString().padLeft(2, '0')}',
+          if (deviceTimeZone.isNotEmpty) 'deviceTimeZone': deviceTimeZone,
+          'timeDifferenceMillis': timeDifferenceMillis,
+          'oathImageUrl': imageUrl,
+          // Add other oath-related data here
+        },
+      };
 
       DatabaseReference userChallengeRef = FirebaseDatabase.instance
           .ref()
@@ -120,15 +129,7 @@ class _OathScreenState extends State<OathScreen> {
           .child('UserChallenges')
           .child(widget.challengeId);
 
-      await userChallengeRef.update({
-        'ChallengeData': {
-          'startingWeight': weightValue,
-          'currentWeight': weightValue,
-          'weightUnit': unit,
-          'oathImageUrl': imageUrl,
-        },
-        'IsOathTaken': true,
-      });
+      await userChallengeRef.update(dataToUpdate);
 
       LogService.info(
           "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
@@ -141,7 +142,10 @@ class _OathScreenState extends State<OathScreen> {
         const SnackBar(content: Text('Oath submitted successfully!')),
       );
 
-      Navigator.pop(context);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/main',
+        (Route<dynamic> route) => false,
+      );
     } catch (e) {
       LogService.error("Error submitting oath: $e");
       setState(() {
@@ -154,165 +158,23 @@ class _OathScreenState extends State<OathScreen> {
     }
   }
 
-  void _toggleWeightUnit() {
-    setState(() {
-      _weightUnit = _weightUnit == 'kg' ? 'lb' : 'kg';
-    });
-    LogService.info("Weight unit toggled to $_weightUnit");
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_challenge == null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
           SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  Text(
-                    "Congrats on\ncommitting\nto a fresh start!",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Poppins',
-                      color: AppColors.mainFGColor,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Weight Input and Toggle Button
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          cursorColor:
-                              AppColors.mainFGColor, // Change cursor color here
-                          decoration: InputDecoration(
-                            labelText: 'Current Weight',
-                            labelStyle: TextStyle(
-                              color: AppColors.mainFGColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              fontFamily: 'Poppins',
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: AppColors.mainFGColor,
-                                width: 2.0,
-                              ),
-                            ),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your current weight.';
-                            }
-                            final weight = double.tryParse(value);
-                            if (weight == null || weight <= 0) {
-                              return 'Please enter a valid weight.';
-                            }
-                            return null;
-                          },
-                          onSaved: (value) {
-                            _currentWeight = double.parse(value!);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: _toggleWeightUnit,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.all(0),
-                          child: Row(
-                            children: [
-                              _buildUnitToggle('kg'),
-                              _buildUnitToggle('lb'),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Image Picker with Fit Adjustment
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8.0),
-                        color: Colors.grey[200],
-                      ),
-                      child: _selectedImageBytes != null
-                          ? Center(
-                              // Wrap with Center widget to ensure alignment
-                              child: Image.memory(
-                                _selectedImageBytes!,
-                                fit: BoxFit.contain, // Adjusted for fitting
-                                alignment: Alignment
-                                    .center, // Ensure it stays centered
-                              ),
-                            )
-                          : const Center(
-                              child: Text(
-                                'Tap to upload your oath image',
-                                style: TextStyle(
-                                  color: AppColors.mainFGColor,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Submit Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _submitOath,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.mainBgColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      child: Text(
-                        'Submit Oath',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Poppins',
-                          color: AppColors.mainFGColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: _buildChallengeUI(),
           ),
-
           // Close (X) Button at Top Right
           Positioned(
             top: 16,
@@ -327,7 +189,6 @@ class _OathScreenState extends State<OathScreen> {
               },
             ),
           ),
-
           // Loading Overlay
           if (_isLoading)
             Container(
@@ -341,25 +202,258 @@ class _OathScreenState extends State<OathScreen> {
     );
   }
 
-  Widget _buildUnitToggle(String unit) {
-    final isActive = _weightUnit == unit;
-    return Container(
-      width: 45,
-      height: 30,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.mainBgColor : Colors.grey[200],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        unit.toUpperCase(),
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: isActive ? AppColors.mainFGColor : Colors.black,
-          fontFamily: 'Poppins',
-        ),
-      ),
-    );
+  Widget _buildChallengeUI() {
+    switch (_challengeType) {
+      case ChallengeType.Lose4Percent:
+      case ChallengeType.Lose10Percent:
+      case ChallengeType.MaintainWeight:
+        return WeightOathWidget(
+          isLoading: _isLoading,
+          onSubmit: (double weight, String unit, Uint8List imageBytes) async {
+            setState(() {
+              _isLoading = true;
+            });
+
+            try {
+              // Fetch Server Time
+              DateTime serverTimeUtc = await ServerTimeService.getServerTime();
+
+              // Capture Local Time
+              DateTime localTime = DateTime.now();
+
+              // Calculate Time Difference (serverTime - localTime)
+              Duration timeDifference = serverTimeUtc.difference(localTime);
+              int timeDifferenceMillis = timeDifference.inMilliseconds;
+
+              // Sanity Check
+              if (timeDifferenceMillis.abs() > 43200000) {
+                // +/-12 hours
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text(
+                          'Time difference is too large. Please ensure your device clock is accurate.')),
+                );
+                setState(() {
+                  _isLoading = false;
+                });
+                return;
+              }
+
+              String? imageUrl = await _uploadImage(imageBytes);
+              if (imageUrl == null) {
+                setState(() {
+                  _isLoading = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content:
+                          Text('Failed to upload image. Please try again.')),
+                );
+                return;
+              }
+
+              Map<String, dynamic> dataToUpdate = {
+                'IsOathTaken': true,
+                'ChallengeData': {
+                  'startingWeight': weight,
+                  'currentWeight': weight,
+                  'weightUnit': unit,
+                  'oathImageUrl': imageUrl,
+                },
+              };
+
+              DatabaseReference userChallengeRef = FirebaseDatabase.instance
+                  .ref()
+                  .child('USER_PROFILES')
+                  .child(widget.userId)
+                  .child('UserChallenges')
+                  .child(widget.challengeId);
+
+              await userChallengeRef.update(dataToUpdate);
+
+              LogService.info(
+                  "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
+
+              setState(() {
+                _isLoading = false;
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Oath submitted successfully!')),
+              );
+
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/main',
+                (Route<dynamic> route) => false,
+              );
+            } catch (e, stackTrace) {
+              LogService.error("Error submitting oath: $e", e, stackTrace);
+              setState(() {
+                _isLoading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Failed to submit oath. Please try again.')),
+              );
+            }
+          },
+        );
+
+      case ChallengeType.ReduceScreenTime:
+        return ReduceScreenTimeOathWidget(
+          isLoading: _isLoading,
+          onSubmit: (Uint8List imageBytes) async {
+            setState(() {
+              _isLoading = true;
+            });
+
+            try {
+              // Fetch Server Time
+              DateTime serverTimeUtc = await ServerTimeService.getServerTime();
+
+              // Capture Local Time
+              DateTime localTime = DateTime.now();
+
+              // Calculate Time Difference (serverTime - localTime)
+              Duration timeDifference = serverTimeUtc.difference(localTime);
+              int timeDifferenceMillis = timeDifference.inMilliseconds;
+
+              // Sanity Check
+              if (timeDifferenceMillis.abs() > 43200000) {
+                // +/-12 hours
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text(
+                          'Time difference is too large. Please ensure your device clock is accurate.')),
+                );
+                setState(() {
+                  _isLoading = false;
+                });
+                return;
+              }
+
+              String? imageUrl = await _uploadImage(imageBytes);
+              if (imageUrl == null) {
+                setState(() {
+                  _isLoading = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content:
+                          Text('Failed to upload image. Please try again.')),
+                );
+                return;
+              }
+
+              Map<String, dynamic> dataToUpdate = {
+                'IsOathTaken': true,
+                'ChallengeData': {
+                  'oathImageUrl': imageUrl,
+                },
+              };
+
+              DatabaseReference userChallengeRef = FirebaseDatabase.instance
+                  .ref()
+                  .child('USER_PROFILES')
+                  .child(widget.userId)
+                  .child('UserChallenges')
+                  .child(widget.challengeId);
+
+              await userChallengeRef.update(dataToUpdate);
+
+              LogService.info(
+                  "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
+
+              setState(() {
+                _isLoading = false;
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Oath submitted successfully!')),
+              );
+
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/main',
+                (Route<dynamic> route) => false,
+              );
+            } catch (e, stackTrace) {
+              LogService.error("Error submitting oath: $e", e, stackTrace);
+              setState(() {
+                _isLoading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Failed to submit oath. Please try again.')),
+              );
+            }
+          },
+        );
+
+      case ChallengeType.WakeUpEarly:
+        return WakeUpEarlyOathWidget(
+          isLoading: _isLoading,
+          onSubmit: (TimeOfDay wakeUpTime) async {
+            setState(() {
+              _isLoading = true;
+            });
+
+            try {
+              Map<String, dynamic> dataToUpdate = {
+                'IsOathTaken': true,
+                'ChallengeData': {
+                  'wakeUpTime':
+                      '${wakeUpTime.hour}:${wakeUpTime.minute.toString().padLeft(2, '0')}',
+                },
+              };
+
+              DatabaseReference userChallengeRef = FirebaseDatabase.instance
+                  .ref()
+                  .child('USER_PROFILES')
+                  .child(widget.userId)
+                  .child('UserChallenges')
+                  .child(widget.challengeId);
+
+              await userChallengeRef.update(dataToUpdate);
+
+              LogService.info(
+                  "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
+
+              setState(() {
+                _isLoading = false;
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Oath submitted successfully!')),
+              );
+
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/main',
+                (Route<dynamic> route) => false,
+              );
+            } catch (e, stackTrace) {
+              LogService.error("Error submitting oath: $e", e, stackTrace);
+              setState(() {
+                _isLoading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Failed to submit oath. Please try again.')),
+              );
+            }
+          },
+        );
+
+      default:
+        return Center(
+          child: Text(
+            'Unknown Challenge Type',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              color: AppColors.mainFGColor,
+            ),
+          ),
+        );
+    }
   }
 }

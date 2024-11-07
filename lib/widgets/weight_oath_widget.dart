@@ -1,3 +1,5 @@
+// lib/widgets/weight_oath_widget.dart
+
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
@@ -6,8 +8,13 @@ import '../services/log_service.dart';
 
 class WeightOathWidget extends StatefulWidget {
   final Function(double weight, String unit, Uint8List imageBytes) onSubmit;
+  final bool isLoading;
 
-  const WeightOathWidget({Key? key, required this.onSubmit}) : super(key: key);
+  const WeightOathWidget({
+    Key? key,
+    required this.onSubmit,
+    required this.isLoading,
+  }) : super(key: key);
 
   @override
   _WeightOathWidgetState createState() => _WeightOathWidgetState();
@@ -18,7 +25,6 @@ class _WeightOathWidgetState extends State<WeightOathWidget> {
   double? _currentWeight;
   String _weightUnit = 'kg';
   Uint8List? _selectedImageBytes;
-  bool _isLoading = false;
 
   Future<void> _pickImage() async {
     try {
@@ -183,22 +189,26 @@ class _WeightOathWidgetState extends State<WeightOathWidget> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: _submit,
+              onPressed: widget.isLoading ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.mainBgColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
               ),
-              child: Text(
-                'Submit Oath',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Poppins',
-                  color: AppColors.mainFGColor,
-                ),
-              ),
+              child: widget.isLoading
+                  ? CircularProgressIndicator(
+                      color: AppColors.mainFGColor,
+                    )
+                  : Text(
+                      'Submit Oath',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Poppins',
+                        color: AppColors.mainFGColor,
+                      ),
+                    ),
             ),
           ),
         ],

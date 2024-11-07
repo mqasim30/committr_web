@@ -123,7 +123,10 @@ class _PledgeAmountSelectionScreenState
                                 Row(
                                   children: [
                                     CircleAvatar(
-                                      backgroundColor: Colors.grey[300],
+                                      backgroundColor: isSelected
+                                          ? AppColors
+                                              .mainBgColor // Change color if selected
+                                          : Colors.grey[300],
                                       radius: 10,
                                     ),
                                     const SizedBox(width: 10),
@@ -233,23 +236,6 @@ class _PledgeAmountSelectionScreenState
                   ),
                 ),
                 const SizedBox(height: 30),
-
-                // Terms and Conditions Text Button
-                /*s
-                TextButton(
-                  onPressed: () {
-                    // Handle terms and conditions navigation
-                  },
-                  child: Text(
-                    'Terms and Conditions',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontFamily: 'Poppins',
-                      color: AppColors.mainFGColor,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),*/
               ],
             ),
           ),

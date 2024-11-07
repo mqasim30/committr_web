@@ -78,7 +78,10 @@ class _MainScreenState extends State<MainScreen> {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               // Show a loading indicator while waiting for data
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                  child: LoadingOverlay(
+                opacity: 55,
+              ));
             }
 
             if (snapshot.hasError) {

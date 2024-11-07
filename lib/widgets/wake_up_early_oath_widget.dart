@@ -1,14 +1,19 @@
+// lib/widgets/wake_up_early_oath_widget.dart
+
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
-import 'package:file_selector/file_selector.dart';
 import '../constants/constants.dart';
 import '../services/log_service.dart';
+import '../services/server_time_service.dart';
 
 class WakeUpEarlyOathWidget extends StatefulWidget {
-  final Function(TimeOfDay wakeUpTime, Uint8List imageBytes) onSubmit;
+  final Function(TimeOfDay wakeUpTime) onSubmit;
+  final bool isLoading;
 
-  const WakeUpEarlyOathWidget({Key? key, required this.onSubmit})
-      : super(key: key);
+  const WakeUpEarlyOathWidget({
+    Key? key,
+    required this.onSubmit,
+    required this.isLoading,
+  }) : super(key: key);
 
   @override
   _WakeUpEarlyOathWidgetState createState() => _WakeUpEarlyOathWidgetState();
@@ -16,33 +21,8 @@ class WakeUpEarlyOathWidget extends StatefulWidget {
 
 class _WakeUpEarlyOathWidgetState extends State<WakeUpEarlyOathWidget> {
   TimeOfDay? _wakeUpTime;
-  Uint8List? _selectedImageBytes;
 
-  Future<void> _pickImage() async {
-    try {
-      final XTypeGroup typeGroup =
-          XTypeGroup(label: 'images', extensions: ['jpg', 'jpeg', 'png']);
-      final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
-
-      if (file != null) {
-        final Uint8List bytes = await file.readAsBytes();
-
-        if (!mounted) return;
-
-        setState(() {
-          _selectedImageBytes = bytes;
-        });
-
-        LogService.info("Image selected: ${file.name}");
-      }
-    } catch (e) {
-      LogService.error("Error picking image: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to pick image.')),
-      );
-    }
-  }
-
+  /// Selects the user's wake-up time using a time picker dialog.
   void _selectWakeUpTime() async {
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
@@ -56,22 +36,15 @@ class _WakeUpEarlyOathWidgetState extends State<WakeUpEarlyOathWidget> {
     }
   }
 
-  void _submit() {
+  /// Submits the oath data by calculating the time difference between the server and local time.
+  void _submit() async {
     if (_wakeUpTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select your wake-up time.')),
       );
       return;
     }
-
-    if (_selectedImageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please upload an image.')),
-      );
-      return;
-    }
-
-    widget.onSubmit(_wakeUpTime!, _selectedImageBytes!);
+    widget.onSubmit(_wakeUpTime!);
   }
 
   @override
@@ -92,7 +65,7 @@ class _WakeUpEarlyOathWidgetState extends State<WakeUpEarlyOathWidget> {
         ),
         const SizedBox(height: 20),
         Text(
-          "Please select your target wake-up time and upload a screenshot of your alarm settings.",
+          "Please select your target wake-up time.",
           style: TextStyle(
             fontSize: 16,
             fontFamily: 'Poppins',
@@ -130,60 +103,31 @@ class _WakeUpEarlyOathWidgetState extends State<WakeUpEarlyOathWidget> {
           ),
         ),
         const SizedBox(height: 20),
-        // Image Picker
-        GestureDetector(
-          onTap: _pickImage,
-          child: Container(
-            height: 200,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(8.0),
-              color: Colors.grey[200],
-            ),
-            child: _selectedImageBytes != null
-                ? Center(
-                    child: Image.memory(
-                      _selectedImageBytes!,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
-                    ),
-                  )
-                : const Center(
-                    child: Text(
-                      'Tap to upload your alarm screenshot',
-                      style: TextStyle(
-                        color: AppColors.mainFGColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        fontFamily: 'Poppins',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 20),
         // Submit Button
         SizedBox(
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: _submit,
+            onPressed: widget.isLoading ? null : _submit,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.mainBgColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
             ),
-            child: Text(
-              'Submit Oath',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Poppins',
-                color: AppColors.mainFGColor,
-              ),
-            ),
+            child: widget.isLoading
+                ? const CircularProgressIndicator(
+                    color: AppColors.mainFGColor,
+                  )
+                : Text(
+                    'Submit Oath',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                      color: AppColors.mainFGColor,
+                    ),
+                  ),
           ),
         ),
       ],

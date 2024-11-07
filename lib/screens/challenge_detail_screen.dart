@@ -249,47 +249,34 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                   textAlign: TextAlign.center,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
 
-                  // Start and End Dates in a Card
-                  Center(
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      child: Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Start Date: $formattedStartDate',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                  fontFamily: 'Poppins',
-                                  color: AppColors.mainFGColor,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'End Date: $formattedEndDate',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                  fontFamily: 'Poppins',
-                                  color: AppColors.mainFGColor,
-                                ),
-                                textAlign: TextAlign.center,
+                              const SizedBox(height: 16),
+
+                              // Start and End Dates
+                              Column(
+                                children: [
+                                  Text(
+                                    'Start Date: $formattedStartDate',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w400,
+                                      fontFamily: 'Poppins',
+                                      color: AppColors.mainFGColor,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'End Date: $formattedEndDate',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w400,
+                                      fontFamily: 'Poppins',
+                                      color: AppColors.mainFGColor,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -297,6 +284,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
 
                   // Steps Section
