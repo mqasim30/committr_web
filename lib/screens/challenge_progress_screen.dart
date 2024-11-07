@@ -2,6 +2,7 @@
 
 import 'package:Committr/widgets/loading_overlay.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../constants/constants.dart';
 import '../providers/challenge_provider.dart';
@@ -19,8 +20,10 @@ import '../widgets/wake_up_early_progress_widget.dart';
 
 class ChallengeProgressScreen extends StatefulWidget {
   final Challenge challenge;
+  final double pledgedAmount;
 
-  const ChallengeProgressScreen({Key? key, required this.challenge})
+  const ChallengeProgressScreen(
+      {Key? key, required this.challenge, required this.pledgedAmount})
       : super(key: key);
 
   @override
@@ -165,11 +168,14 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
 
   /// Builds the challenge description card
   Widget _buildDescriptionCard(Challenge challenge) {
+    final startDate = DateFormat('dd MMM yyyy').format(
+        DateTime.fromMillisecondsSinceEpoch(challenge.challengeStartTimestamp));
+    final endDate = DateFormat('dd MMM yyyy').format(
+        DateTime.fromMillisecondsSinceEpoch(challenge.challengeEndTimestamp));
+
     return Center(
       child: Container(
-        constraints: const BoxConstraints(
-            maxWidth: 400,
-            minHeight: 120), // Adjust minHeight for desired 4-line space
+        constraints: const BoxConstraints(maxWidth: 400, minHeight: 120),
         child: Card(
           elevation: 4,
           shape: RoundedRectangleBorder(
@@ -179,6 +185,7 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
+                // Challenge Title
                 Text(
                   "\"${challenge.challengeDescription}\"",
                   style: const TextStyle(
@@ -186,12 +193,167 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
                     fontWeight: FontWeight.w400,
                     fontFamily: 'Poppins',
                     color: AppColors.mainFGColor,
-                    height: 1.5, // Line height for readability
+                    height: 1.5,
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 10, // Limit the number of lines if needed
+                  maxLines: 10,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 16),
+
+                // Pledged, Participants, Pot Size Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            "\$${widget.pledgedAmount}",
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Pledged',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 50,
+                      width: 1,
+                      color: Colors.grey,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            "${challenge.challengeNumberParticipants}",
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Participants',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 50,
+                      width: 1,
+                      color: Colors.grey,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            "\$${challenge.challengePotSize}",
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Pot Size',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Start and End Dates with Divider
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            startDate,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Started',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 50,
+                      width: 1,
+                      color: Colors.grey,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            endDate,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Ending',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.mainFGColor,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -253,7 +415,7 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Progress',
+          'Progress:',
           style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,

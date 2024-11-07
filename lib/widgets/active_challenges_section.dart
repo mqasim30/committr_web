@@ -109,8 +109,11 @@ class ActiveChallengesSection extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  ChallengeProgressScreen(challenge: challenge),
+                              builder: (context) => ChallengeProgressScreen(
+                                challenge: challenge,
+                                pledgedAmount: userChallengeDetail
+                                    .userChallengePledgeAmount,
+                              ),
                             ),
                           );
                           break;

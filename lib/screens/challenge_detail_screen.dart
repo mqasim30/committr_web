@@ -72,8 +72,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         updatedChallenge.challengeEndTimestamp);
 
     final String formattedStartDate =
-        DateFormat('MMMM dd, yyyy').format(startDate);
-    final String formattedEndDate = DateFormat('MMMM dd, yyyy').format(endDate);
+        DateFormat('dd MMM yyyy').format(startDate);
+    final String formattedEndDate = DateFormat('dd MMM yyyy').format(endDate);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -196,7 +196,6 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                         ],
                                       ),
                                     ),
-                                    // Centered Divider
                                     Container(
                                       height: 50,
                                       width: 1,
@@ -231,52 +230,82 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                   ],
                                 ),
                               ),
-
-                              const SizedBox(height: 8),
-
-                              // Members Committed Today Text
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 0),
-                                child: Text(
-                                  "${updatedChallenge.challengeNumberParticipants}+ members joined today",
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                    fontFamily: 'Poppins',
-                                    color: AppColors.mainFGColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-
                               const SizedBox(height: 16),
 
-                              // Start and End Dates
-                              Column(
+                              // Start and End Dates with Divider
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
                                 children: [
-                                  Text(
-                                    'Start Date: $formattedStartDate',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w400,
-                                      fontFamily: 'Poppins',
-                                      color: AppColors.mainFGColor,
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          formattedStartDate,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w400,
+                                            color: AppColors.mainFGColor,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Started',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppColors.mainFGColor,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'End Date: $formattedEndDate',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w400,
-                                      fontFamily: 'Poppins',
-                                      color: AppColors.mainFGColor,
+                                  Container(
+                                    height: 50,
+                                    width: 1,
+                                    color: Colors.grey,
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          formattedEndDate,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w400,
+                                            color: AppColors.mainFGColor,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        const Text(
+                                          'Ending',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppColors.mainFGColor,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    textAlign: TextAlign.center,
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Members Committed Today Text
+                              Text(
+                                "${updatedChallenge.challengeNumberParticipants}+ members joined today",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'Poppins',
+                                  color: AppColors.mainFGColor,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),

@@ -332,7 +332,7 @@ class _WakeUpEarlyProgressWidgetState extends State<WakeUpEarlyProgressWidget> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.mainBgColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(1),
                   ),
                 ),
                 child: _isSubmitting
@@ -579,7 +579,7 @@ class _ChallengeInfoCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           child: Column(
             children: [
               Text(
