@@ -188,8 +188,9 @@ class _MainScreenState extends State<MainScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 40),
                         // Menu Icon
-                        Padding(
+                        /*Padding(
                           padding: const EdgeInsets.only(right: 0.0),
                           child: GestureDetector(
                             onTap: () {
@@ -201,7 +202,7 @@ class _MainScreenState extends State<MainScreen> {
                               color: Color(0xFF083400),
                             ),
                           ),
-                        ),
+                        ),*/
                       ],
                     ),
                     const SizedBox(height: 20),

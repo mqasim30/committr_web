@@ -8,6 +8,14 @@
     ],
     "rewrites": [
       {
+        "source": "/success.html",
+        "destination": "/success.html"
+      },
+      {
+        "source": "/cancel.html",
+        "destination": "/cancel.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

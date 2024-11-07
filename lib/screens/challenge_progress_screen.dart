@@ -302,7 +302,6 @@ class _ChallengeInfoCard extends StatelessWidget {
   final String value;
 
   const _ChallengeInfoCard({
-    super.key,
     required this.title,
     required this.value,
   });

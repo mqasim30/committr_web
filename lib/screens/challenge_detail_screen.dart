@@ -1,6 +1,7 @@
 // lib/screens/challenge_detail_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
 import 'package:provider/provider.dart';
 import '../constants/challenge_constants.dart';
 import '../models/challenge.dart';
@@ -9,7 +10,7 @@ import '../services/auth_service.dart';
 import '../widgets/loading_overlay.dart';
 import '../widgets/step_card.dart';
 import '../widgets/user_challenge_info_card.dart';
-import '../widgets/rules_card.dart'; // Import the RulesCard widget
+import '../widgets/rules_card.dart';
 import 'pledge_amount_selection_screen.dart';
 import '../constants/constants.dart';
 
@@ -17,9 +18,9 @@ class ChallengeDetailScreen extends StatefulWidget {
   final Challenge challenge;
 
   const ChallengeDetailScreen({
-    super.key,
+    Key? key,
     required this.challenge,
-  });
+  }) : super(key: key);
 
   @override
   _ChallengeDetailScreenState createState() => _ChallengeDetailScreenState();
@@ -64,6 +65,16 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         ChallengeConstants.getDetailedDescription(
             updatedChallenge.challengeTitle);
 
+    // Convert timestamps to DateTime and format
+    final DateTime startDate = DateTime.fromMillisecondsSinceEpoch(
+        updatedChallenge.challengeStartTimestamp);
+    final DateTime endDate = DateTime.fromMillisecondsSinceEpoch(
+        updatedChallenge.challengeEndTimestamp);
+
+    final String formattedStartDate =
+        DateFormat('MMMM dd, yyyy').format(startDate);
+    final String formattedEndDate = DateFormat('MMMM dd, yyyy').format(endDate);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -100,7 +111,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                       Expanded(
                         child: Column(
                           children: [
-                            Text(
+                            const Text(
                               'Challenge:',
                               style: TextStyle(
                                   fontFamily: 'Poppins',
@@ -112,7 +123,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                             ),
                             Text(
                               updatedChallenge.challengeTitle,
-                              style: TextStyle(
+                              style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w400,
                                   fontSize: 18,
@@ -121,23 +132,6 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                               textAlign: TextAlign.center,
                             ),
                           ],
-                        ),
-                      ),
-
-                      // Outlined Circle for Share Icon
-                      Container(
-                        padding: const EdgeInsets.all(1.0),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: AppColors.mainFGColor, width: 2),
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.share,
-                              color: AppColors.mainFGColor),
-                          onPressed: () {
-                            // Share functionality goes here
-                          },
                         ),
                       ),
                     ],
@@ -160,7 +154,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                               // Title
                               Text(
                                 "\"${updatedChallenge.challengeDescription}\"",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w400,
                                   fontFamily: 'Poppins',
@@ -183,7 +177,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                         children: [
                                           Text(
                                             "${updatedChallenge.challengeNumberParticipants}",
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontSize: 20,
                                               fontWeight: FontWeight.w400,
                                               fontFamily: 'Poppins',
@@ -191,7 +185,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 4),
-                                          Text(
+                                          const Text(
                                             "Participants",
                                             style: TextStyle(
                                               fontSize: 14,
@@ -215,7 +209,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                         children: [
                                           Text(
                                             "\$${updatedChallenge.challengePotSize}",
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontSize: 20,
                                               fontWeight: FontWeight.w400,
                                               fontFamily: 'Poppins',
@@ -223,7 +217,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 4),
-                                          Text(
+                                          const Text(
                                             "Pot Size",
                                             style: TextStyle(
                                               fontSize: 14,
@@ -237,67 +231,65 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 16),
 
-                              // Centered Member Circles with Proper Radius
-                              Center(
-                                child: SizedBox(
-                                  width: 100,
-                                  height: 44, // Increased height to fit circles
-                                  child: Stack(
-                                    children: [
-                                      Positioned(
-                                        left: 0,
-                                        child: CircleAvatar(
-                                          backgroundColor: Colors.white,
-                                          radius: 20,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 20,
-                                        child: CircleAvatar(
-                                          backgroundColor: Colors.white,
-                                          radius: 20,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 40,
-                                        child: CircleAvatar(
-                                          backgroundColor: Colors.white,
-                                          radius: 20,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 60,
-                                        child: CircleAvatar(
-                                          backgroundColor: Color.fromARGB(
-                                              100, 159, 232, 112),
-                                          radius: 20,
-                                          child: Text(
-                                            "${updatedChallenge.challengeNumberParticipants}+",
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w400,
-                                              fontFamily: 'Poppins',
-                                              color: AppColors.mainFGColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
                               const SizedBox(height: 8),
 
                               // Members Committed Today Text
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 0),
+                                child: Text(
+                                  "${updatedChallenge.challengeNumberParticipants}+ members joined today",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w400,
+                                    fontFamily: 'Poppins',
+                                    color: AppColors.mainFGColor,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Start and End Dates in a Card
+                  Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
                               Text(
-                                "members committed today",
-                                style: TextStyle(
-                                  fontSize: 14,
+                                'Start Date: $formattedStartDate',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
                                   fontFamily: 'Poppins',
                                   color: AppColors.mainFGColor,
                                 ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'End Date: $formattedEndDate',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'Poppins',
+                                  color: AppColors.mainFGColor,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
@@ -351,6 +343,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                 ],
               ),
             ),
+
           // Floating Continue Button with Outer Rectangle and Centered Button
           Positioned(
             bottom: 16,
@@ -373,7 +366,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child: Text(
+                  child: const Text(
                     'CONTINUE',
                     style: TextStyle(
                       fontFamily: 'Poppins',

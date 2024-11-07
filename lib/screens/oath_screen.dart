@@ -319,7 +319,12 @@ class _OathScreenState extends State<OathScreen> {
             right: 16,
             child: IconButton(
               icon: Icon(Icons.close, color: AppColors.mainFGColor),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/main',
+                  (Route<dynamic> route) => false,
+                );
+              },
             ),
           ),
 

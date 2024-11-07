@@ -10,9 +10,9 @@ class PledgeAmountSelectionScreen extends StatefulWidget {
   final Challenge challenge;
 
   const PledgeAmountSelectionScreen({
-    super.key,
+    Key? key,
     required this.challenge,
-  });
+  }) : super(key: key);
 
   @override
   _PledgeAmountSelectionScreenState createState() =>
@@ -25,6 +25,12 @@ class _PledgeAmountSelectionScreenState
   double? selectedPledgeAmount; // Track the selected pledge amount
 
   final List<double> pledgeAmounts = [35.0, 55.0, 75.0, 95.0];
+
+  @override
+  void initState() {
+    super.initState();
+    selectedPledgeAmount = 55.0; // Pre-select the popular option
+  }
 
   double calculateAdditionalReward(double pledgeAmount) {
     return pledgeAmount - 5;
@@ -226,9 +232,10 @@ class _PledgeAmountSelectionScreenState
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 30),
 
                 // Terms and Conditions Text Button
+                /*s
                 TextButton(
                   onPressed: () {
                     // Handle terms and conditions navigation
@@ -242,7 +249,7 @@ class _PledgeAmountSelectionScreenState
                       decoration: TextDecoration.underline,
                     ),
                   ),
-                ),
+                ),*/
               ],
             ),
           ),

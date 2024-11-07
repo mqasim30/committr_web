@@ -82,7 +82,13 @@ class ChallengeWebApp extends StatelessWidget {
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       themeMode: ThemeMode.light,
-      home: const AuthWrapper(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const AuthWrapper(),
+        '/login': (context) => const LoginScreen(),
+        '/main': (context) => const MainScreenWithListener(),
+        // Add other routes as needed
+      },
       debugShowCheckedModeBanner: false,
     );
   }
@@ -169,7 +175,6 @@ class MainScreenWithListener extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Include ChallengeListener at the root of your app
     return Scaffold(
       body: Stack(
         children: [

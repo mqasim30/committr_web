@@ -1,7 +1,7 @@
 // lib/screens/login_screen.dart
 
-import 'package:committr_web/main.dart';
-import 'package:committr_web/widgets/loading_overlay.dart';
+import 'package:Committr/main.dart';
+import 'package:Committr/widgets/loading_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/google_sign_in_button.dart';

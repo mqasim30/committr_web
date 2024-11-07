@@ -148,7 +148,6 @@ class _ChallengeStatCard extends StatelessWidget {
   final bool fullWidth;
 
   const _ChallengeStatCard({
-    super.key,
     required this.title,
     required this.value,
     this.fullWidth = false,

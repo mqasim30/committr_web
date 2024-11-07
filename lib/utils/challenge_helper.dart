@@ -2,7 +2,14 @@
 
 import '../constants/challenge_constants.dart';
 
-enum ChallengeType { Lose4Percent, Lose10Percent, MaintainWeight, Unknown }
+enum ChallengeType {
+  Lose4Percent,
+  Lose10Percent,
+  MaintainWeight,
+  WakeUpEarly,
+  ReduceScreenTime,
+  Unknown
+}
 
 class ChallengeHelper {
   /// Determines the challenge type based on the challenge title.
@@ -13,13 +20,17 @@ class ChallengeHelper {
       return ChallengeType.Lose10Percent;
     } else if (challengeTitle == ChallengeConstants.MAINTAIN_WEIGHT) {
       return ChallengeType.MaintainWeight;
+    } else if (challengeTitle == ChallengeConstants.WAKE_UP_EARLY) {
+      return ChallengeType.WakeUpEarly;
+    } else if (challengeTitle == ChallengeConstants.REDUCE_SCREEN_TIME) {
+      return ChallengeType.ReduceScreenTime;
     } else {
       return ChallengeType.Unknown;
     }
   }
 
-  /// Calculates the goal weight based on the challenge type.
-  /// Returns null if the challenge type is unknown or not applicable.
+  /// Calculates the goal based on the challenge type.
+  /// Returns a double for weight-related challenges and null otherwise.
   static double? calculateGoalWeight(
       ChallengeType type, double startingWeight) {
     switch (type) {
@@ -31,6 +42,10 @@ class ChallengeHelper {
         // For maintain weight, define a range (+/-2%)
         // Here, we'll return the starting weight as the goal.
         return startingWeight;
+      // For non-weight challenges, return null
+      case ChallengeType.WakeUpEarly:
+      case ChallengeType.ReduceScreenTime:
+        return null;
       case ChallengeType.Unknown:
       default:
         return null;
