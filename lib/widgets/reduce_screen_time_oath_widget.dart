@@ -11,10 +11,10 @@ class ReduceScreenTimeOathWidget extends StatefulWidget {
   final bool isLoading;
 
   const ReduceScreenTimeOathWidget({
-    Key? key,
+    super.key,
     required this.onSubmit,
     required this.isLoading,
-  }) : super(key: key);
+  });
 
   @override
   _ReduceScreenTimeOathWidgetState createState() =>

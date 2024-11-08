@@ -18,10 +18,10 @@ class OathScreen extends StatefulWidget {
   final String challengeId;
 
   const OathScreen({
-    Key? key,
+    super.key,
     required this.userId,
     required this.challengeId,
-  }) : super(key: key);
+  });
 
   @override
   _OathScreenState createState() => _OathScreenState();

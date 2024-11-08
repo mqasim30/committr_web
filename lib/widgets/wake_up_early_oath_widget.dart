@@ -3,17 +3,16 @@
 import 'package:flutter/material.dart';
 import '../constants/constants.dart';
 import '../services/log_service.dart';
-import '../services/server_time_service.dart';
 
 class WakeUpEarlyOathWidget extends StatefulWidget {
   final Function(TimeOfDay wakeUpTime) onSubmit;
   final bool isLoading;
 
   const WakeUpEarlyOathWidget({
-    Key? key,
+    super.key,
     required this.onSubmit,
     required this.isLoading,
-  }) : super(key: key);
+  });
 
   @override
   _WakeUpEarlyOathWidgetState createState() => _WakeUpEarlyOathWidgetState();

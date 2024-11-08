@@ -18,9 +18,9 @@ class ChallengeDetailScreen extends StatefulWidget {
   final Challenge challenge;
 
   const ChallengeDetailScreen({
-    Key? key,
+    super.key,
     required this.challenge,
-  }) : super(key: key);
+  });
 
   @override
   _ChallengeDetailScreenState createState() => _ChallengeDetailScreenState();

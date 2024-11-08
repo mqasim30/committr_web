@@ -10,9 +10,9 @@ class PledgeAmountSelectionScreen extends StatefulWidget {
   final Challenge challenge;
 
   const PledgeAmountSelectionScreen({
-    Key? key,
+    super.key,
     required this.challenge,
-  }) : super(key: key);
+  });
 
   @override
   _PledgeAmountSelectionScreenState createState() =>

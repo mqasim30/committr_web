@@ -23,8 +23,7 @@ class ChallengeProgressScreen extends StatefulWidget {
   final double pledgedAmount;
 
   const ChallengeProgressScreen(
-      {Key? key, required this.challenge, required this.pledgedAmount})
-      : super(key: key);
+      {super.key, required this.challenge, required this.pledgedAmount});
 
   @override
   _ChallengeProgressScreenState createState() =>
@@ -291,7 +290,7 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 25),
 
                 // Start and End Dates with Divider
                 Row(
@@ -353,7 +352,6 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
               ],
             ),
           ),

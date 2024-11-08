@@ -11,10 +11,10 @@ class WeightOathWidget extends StatefulWidget {
   final bool isLoading;
 
   const WeightOathWidget({
-    Key? key,
+    super.key,
     required this.onSubmit,
     required this.isLoading,
-  }) : super(key: key);
+  });
 
   @override
   _WeightOathWidgetState createState() => _WeightOathWidgetState();

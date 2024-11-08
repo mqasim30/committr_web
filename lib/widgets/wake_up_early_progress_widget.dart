@@ -1,11 +1,8 @@
-// lib/widgets/wake_up_early_progress_widget.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../constants/constants.dart';
 import '../models/challenge.dart';
 import '../models/user_challenge_detail.dart';
-import '../utils/challenge_helper.dart';
 import '../services/server_time_service.dart';
 import '../services/auth_service.dart';
 import '../services/log_service.dart';
@@ -18,12 +15,12 @@ class WakeUpEarlyProgressWidget extends StatefulWidget {
   final AuthService authService;
 
   const WakeUpEarlyProgressWidget({
-    Key? key,
+    super.key,
     required this.challenge,
     required this.userChallengeDetail,
     required this.currentDate,
     required this.authService,
-  }) : super(key: key);
+  });
 
   @override
   _WakeUpEarlyProgressWidgetState createState() =>
@@ -185,7 +182,135 @@ class _WakeUpEarlyProgressWidgetState extends State<WakeUpEarlyProgressWidget> {
     }
   }
 
-  /// Determines if the user woke up on time based on check-in time and committed wake-up time
+  @override
+  Widget build(BuildContext context) {
+    // Generate today's date key based on currentDate
+    String todayDateKey =
+        '${widget.currentDate.year}-${widget.currentDate.month.toString().padLeft(2, '0')}-${widget.currentDate.day.toString().padLeft(2, '0')}';
+    LogService.info("Today's Date Key: $todayDateKey");
+
+    // Check if the user has already checked in today
+    bool hasCheckedInToday = _checkInData.containsKey(todayDateKey) &&
+        _checkInData[todayDateKey]['checkedIn'] == true;
+    LogService.info("Has Checked-In Today: $hasCheckedInToday");
+
+    final startDateUtc = DateTime.fromMillisecondsSinceEpoch(
+        widget.challenge.challengeStartTimestamp,
+        isUtc: true);
+    final endDateUtc = DateTime.fromMillisecondsSinceEpoch(
+        widget.challenge.challengeEndTimestamp,
+        isUtc: true);
+
+    // Normalize currentDate by setting time to midnight UTC
+    DateTime normalizedCurrentDate = DateTime.utc(
+      widget.currentDate.year,
+      widget.currentDate.month,
+      widget.currentDate.day,
+    );
+
+    // Normalize startDateUtc and endDateUtc
+    DateTime normalizedStartDate = DateTime.utc(
+      startDateUtc.year,
+      startDateUtc.month,
+      startDateUtc.day,
+    );
+
+    DateTime normalizedEndDate = DateTime.utc(
+      endDateUtc.year,
+      endDateUtc.month,
+      endDateUtc.day,
+    );
+
+    // Determine the last date to display in check-in history
+    DateTime displayEndDate = normalizedCurrentDate.isBefore(normalizedEndDate)
+        ? normalizedCurrentDate
+        : normalizedEndDate;
+
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.all(0.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Daily Check-In Button
+              Center(
+                child: SizedBox(
+                  width: 400, // Set a maximum width of 400 for the button
+                  child: ElevatedButton(
+                    onPressed: hasCheckedInToday || _isSubmitting
+                        ? null
+                        : _submitCheckIn,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.mainBgColor,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 16), // Increase button height
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: AppColors.mainFGColor,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : hasCheckedInToday
+                            ? const Text(
+                                'Already Checked-In',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Poppins',
+                                  color: AppColors.mainFGColor,
+                                ),
+                              )
+                            : const Text(
+                                'Tap For Daily Check-In',
+                                style: TextStyle(
+                                  fontSize:
+                                      18, // Larger font for better emphasis
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Poppins',
+                                  color: AppColors.mainFGColor,
+                                ),
+                              ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24), // Increased spacing after the button
+
+              // Check-In History section with adjusted alignment
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: 0.0), // Adjust left padding for alignment
+                child: const Text(
+                  'Check-In History:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Poppins',
+                    color: AppColors.mainFGColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: 0.0), // Consistent left padding for content
+                child:
+                    _buildCheckInHistory(normalizedStartDate, displayEndDate),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Determines if the user woke up on time based on check-in time and committed wake-up time
   bool _didUserWakeUpOnTime(
       DateTime checkInTime, String committedWakeUpTime, String dateKey) {
@@ -257,121 +382,6 @@ class _WakeUpEarlyProgressWidgetState extends State<WakeUpEarlyProgressWidget> {
     LogService.info("Is On Time: $isOnTime");
 
     return isOnTime;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Generate today's date key based on currentDate
-    String todayDateKey =
-        '${widget.currentDate.year}-${widget.currentDate.month.toString().padLeft(2, '0')}-${widget.currentDate.day.toString().padLeft(2, '0')}';
-    LogService.info("Today's Date Key: $todayDateKey");
-
-    // Check if the user has already checked in today
-    bool hasCheckedInToday = _checkInData.containsKey(todayDateKey) &&
-        _checkInData[todayDateKey]['checkedIn'] == true;
-    LogService.info("Has Checked-In Today: $hasCheckedInToday");
-
-    final startDateUtc = DateTime.fromMillisecondsSinceEpoch(
-        widget.challenge.challengeStartTimestamp,
-        isUtc: true);
-    final endDateUtc = DateTime.fromMillisecondsSinceEpoch(
-        widget.challenge.challengeEndTimestamp,
-        isUtc: true);
-
-    // Normalize currentDate by setting time to midnight UTC
-    DateTime normalizedCurrentDate = DateTime.utc(
-      widget.currentDate.year,
-      widget.currentDate.month,
-      widget.currentDate.day,
-    );
-
-    // Normalize startDateUtc and endDateUtc
-    DateTime normalizedStartDate = DateTime.utc(
-      startDateUtc.year,
-      startDateUtc.month,
-      startDateUtc.day,
-    );
-
-    DateTime normalizedEndDate = DateTime.utc(
-      endDateUtc.year,
-      endDateUtc.month,
-      endDateUtc.day,
-    );
-
-    // Determine the last date to display in check-in history
-    DateTime displayEndDate = normalizedCurrentDate.isBefore(normalizedEndDate)
-        ? normalizedCurrentDate
-        : normalizedEndDate;
-
-    final daysLeft =
-        ChallengeHelper.calculateDaysLeft(endDateUtc, widget.currentDate);
-    LogService.info("Days Left: $daysLeft");
-
-    return Stack(
-      children: [
-        SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Display Days Left
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _ChallengeInfoCard(
-                    title: "Days Left",
-                    value: "$daysLeft",
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Daily Check-In Button
-              ElevatedButton(
-                onPressed:
-                    hasCheckedInToday || _isSubmitting ? null : _submitCheckIn,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.mainBgColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: AppColors.mainFGColor,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : hasCheckedInToday
-                        ? const Text(
-                            'Already Checked-In',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'Poppins',
-                              color: AppColors.mainFGColor,
-                            ),
-                          )
-                        : const Text(
-                            'Daily Check-In',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'Poppins',
-                              color: AppColors.mainFGColor,
-                            ),
-                          ),
-              ),
-              const SizedBox(height: 16),
-              // Check-In History
-              _buildCheckInHistory(normalizedStartDate, displayEndDate),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 
   /// Builds the check-in history UI
@@ -455,16 +465,6 @@ class _WakeUpEarlyProgressWidgetState extends State<WakeUpEarlyProgressWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Check-In History:',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Poppins',
-            color: AppColors.mainFGColor,
-          ),
-        ),
-        const SizedBox(height: 8),
         checkInCards.isNotEmpty
             ? Column(
                 children: checkInCards,
@@ -496,11 +496,10 @@ class _CheckInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    LogService.info(
-        "Rendering Check-In Card: Date=$date, Status=$status, Time=$time");
-
     Color statusColor;
     IconData statusIcon;
+
+    // Determine status colors and icons based on the status
     switch (status) {
       case 'On Time':
         statusColor = Colors.green;
@@ -519,90 +518,90 @@ class _CheckInCard extends StatelessWidget {
         statusIcon = Icons.help;
     }
 
+    // Parsing the date to get day of the week
+    final DateTime parsedDate = DateFormat('MM/dd/yyyy').parse(date);
+    final String dayOfWeek = DateFormat('EEEE').format(parsedDate);
+    final String monthDay = DateFormat('MMM dd').format(parsedDate);
+
     return Card(
       elevation: 2,
-      child: ListTile(
-        title: Text(
-          date,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.w500,
-            color: AppColors.mainFGColor,
-          ),
-        ),
-        subtitle: Row(
+      margin:
+          const EdgeInsets.symmetric(vertical: 4), // Reduce vertical spacing
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
           children: [
+            // Date and Day Section
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    monthDay,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.mainFGColor,
+                    ),
+                  ),
+                  Text(
+                    dayOfWeek,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.mainFGColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8), // Spacing between sections
+
+            // Time and Label Section with slight translation
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Transform.translate(
+                    offset: const Offset(
+                        35.0, 0.0), // Adjust this offset to fine-tune
+                    child: Text(
+                      time,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.mainFGColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4), // Add spacing for better alignment
+                  const Text(
+                    'Your wake up time',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      color: AppColors.mainFGColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Status Icon and Color
             Icon(
               statusIcon,
               color: statusColor,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Status: $status',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                color: statusColor,
-              ),
+              size: 24,
             ),
           ],
-        ),
-        trailing: Text(
-          time,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-            color: AppColors.mainFGColor,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Widget to display challenge information cards
-class _ChallengeInfoCard extends StatelessWidget {
-  final String title;
-  final String value;
-
-  const _ChallengeInfoCard({
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-          child: Column(
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 24,
-                  color: AppColors.mainFGColor,
-                  fontFamily: 'Poppins',
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.mainFGColor,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

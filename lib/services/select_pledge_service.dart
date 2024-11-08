@@ -11,7 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../screens/payment_status_listener.dart';
 
 final UserService _userService = UserService();
-const bool skipPayment = true; // Set to false to enable payment
+const bool skipPayment = false; // Set to false to enable payment
 
 Future<bool> selectPledgeAmount(
     BuildContext context, Challenge challenge, double amount) async {

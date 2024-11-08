@@ -1,5 +1,3 @@
-// lib/widgets/reduce_screen_time_progress_widget.dart
-
 import 'package:flutter/material.dart';
 import '../constants/constants.dart';
 import '../models/challenge.dart';
@@ -12,33 +10,31 @@ class ReduceScreenTimeProgressWidget extends StatelessWidget {
   final DateTime currentDate;
 
   const ReduceScreenTimeProgressWidget({
-    Key? key,
+    super.key,
     required this.challenge,
     required this.userChallengeDetail,
     required this.currentDate,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    final startDate =
-        DateTime.fromMillisecondsSinceEpoch(challenge.challengeStartTimestamp);
     final endDate =
         DateTime.fromMillisecondsSinceEpoch(challenge.challengeEndTimestamp);
     final daysLeft = ChallengeHelper.calculateDaysLeft(endDate, currentDate);
 
     return Column(
       children: [
-        // Display Days Left
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _ChallengeInfoCard(
+        // Centered Days Left Card with fixed width
+        Center(
+          child: SizedBox(
+            width: 200, // Set a fixed width to match other progress widgets
+            child: _ChallengeInfoCard(
               title: "Days Left",
               value: "$daysLeft",
             ),
-          ],
+          ),
         ),
-        // You can add more UI components here as needed
+        // Additional UI components can be added here if needed
       ],
     );
   }
@@ -55,37 +51,35 @@ class _ChallengeInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: Column(
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 24,
-                  color: AppColors.mainFGColor,
-                  fontFamily: 'Poppins',
-                ),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w400,
+                fontSize: 24,
+                color: AppColors.mainFGColor,
+                fontFamily: 'Poppins',
               ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.mainFGColor,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w400,
-                ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppColors.mainFGColor,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w400,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

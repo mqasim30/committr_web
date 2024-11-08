@@ -12,11 +12,11 @@ class WeightChallengeProgressWidget extends StatelessWidget {
   final DateTime currentDate;
 
   const WeightChallengeProgressWidget({
-    Key? key,
+    super.key,
     required this.challenge,
     required this.userChallengeDetail,
     required this.currentDate,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +31,6 @@ class WeightChallengeProgressWidget extends StatelessWidget {
     double? startingWeightValue = _parseWeight(startingWeight);
     double? currentWeightValue = _parseWeight(currentWeight);
 
-    final startDate =
-        DateTime.fromMillisecondsSinceEpoch(challenge.challengeStartTimestamp);
     final endDate =
         DateTime.fromMillisecondsSinceEpoch(challenge.challengeEndTimestamp);
     final daysLeft = ChallengeHelper.calculateDaysLeft(endDate, currentDate);
