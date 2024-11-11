@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../constants/constants.dart';
 import '../models/challenge.dart';
 import '../models/user_challenge_detail.dart';
-import '../utils/challenge_helper.dart';
 
 class ReduceScreenTimeProgressWidget extends StatelessWidget {
   final Challenge challenge;
@@ -18,19 +17,21 @@ class ReduceScreenTimeProgressWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final endDate =
-        DateTime.fromMillisecondsSinceEpoch(challenge.challengeEndTimestamp);
-    final daysLeft = ChallengeHelper.calculateDaysLeft(endDate, currentDate);
+    // Retrieve daily usage and calculate goal
+    final dailyUsage = double.tryParse(
+            userChallengeDetail.challengeData['dailyUsage'] ?? '0') ??
+        0.0;
+    final goalUsage = dailyUsage / 2;
 
     return Column(
       children: [
-        // Centered Days Left Card with fixed width
         Center(
           child: SizedBox(
-            width: 200, // Set a fixed width to match other progress widgets
-            child: _ChallengeInfoCard(
-              title: "Days Left",
-              value: "$daysLeft",
+            width: 400,
+            child: _GoalInfoCard(
+              title: "Screen Time Goal",
+              startingUsage: "${dailyUsage.toStringAsFixed(1)} hours/day",
+              goalUsage: "${goalUsage.toStringAsFixed(1)} hours/day",
             ),
           ),
         ),
@@ -40,13 +41,15 @@ class ReduceScreenTimeProgressWidget extends StatelessWidget {
   }
 }
 
-class _ChallengeInfoCard extends StatelessWidget {
+class _GoalInfoCard extends StatelessWidget {
   final String title;
-  final String value;
+  final String startingUsage;
+  final String goalUsage;
 
-  const _ChallengeInfoCard({
+  const _GoalInfoCard({
     required this.title,
-    required this.value,
+    required this.startingUsage,
+    required this.goalUsage,
   });
 
   @override
@@ -56,28 +59,68 @@ class _ChallengeInfoCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      child: Container(
+        width: 400, // Ensure the card itself has a fixed width
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              value,
+              title,
               style: const TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.w400,
-                fontSize: 24,
                 color: AppColors.mainFGColor,
                 fontFamily: 'Poppins',
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.mainFGColor,
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w400,
-              ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Starting Usage:",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.mainFGColor,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                Text(
+                  startingUsage,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.mainFGColor,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Goal Usage:",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.mainFGColor,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                Text(
+                  goalUsage,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.mainFGColor,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
             ),
           ],
         ),

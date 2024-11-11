@@ -1,5 +1,3 @@
-// lib/widgets/reduce_screen_time_oath_widget.dart
-
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
@@ -7,7 +5,7 @@ import '../constants/constants.dart';
 import '../services/log_service.dart';
 
 class ReduceScreenTimeOathWidget extends StatefulWidget {
-  final Function(Uint8List imageBytes) onSubmit;
+  final Function(Uint8List imageBytes, String dailyUsage) onSubmit;
   final bool isLoading;
 
   const ReduceScreenTimeOathWidget({
@@ -24,6 +22,7 @@ class ReduceScreenTimeOathWidget extends StatefulWidget {
 class _ReduceScreenTimeOathWidgetState
     extends State<ReduceScreenTimeOathWidget> {
   Uint8List? _selectedImageBytes;
+  final TextEditingController _usageController = TextEditingController();
 
   Future<void> _pickImage() async {
     try {
@@ -58,7 +57,14 @@ class _ReduceScreenTimeOathWidgetState
       return;
     }
 
-    widget.onSubmit(_selectedImageBytes!);
+    if (_usageController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your daily average usage.')),
+      );
+      return;
+    }
+
+    widget.onSubmit(_selectedImageBytes!, _usageController.text);
   }
 
   @override
@@ -75,6 +81,50 @@ class _ReduceScreenTimeOathWidgetState
             fontFamily: 'Poppins',
             color: AppColors.mainFGColor,
             height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          "Please enter your current daily average screen time (in hours):",
+          style: TextStyle(
+            fontSize: 16,
+            fontFamily: 'Poppins',
+            color: AppColors.mainFGColor,
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Daily Usage Input Field
+        TextField(
+          controller: _usageController,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          cursorColor: AppColors.mainFGColor, // Set cursor color
+          decoration: InputDecoration(
+            hintText: "e.g., 4.5",
+            hintStyle: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+              fontFamily: 'Poppins',
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.0),
+              borderSide: BorderSide(color: Colors.grey),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.0),
+              borderSide: BorderSide(
+                  color: AppColors.mainFGColor), // Focused border color
+            ),
+            filled: true,
+            fillColor: Colors.grey[200],
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 10.0,
+              horizontal: 15.0,
+            ),
+          ),
+          style: TextStyle(
+            fontSize: 14,
+            fontFamily: 'Poppins',
+            color: AppColors.mainFGColor,
           ),
         ),
         const SizedBox(height: 20),

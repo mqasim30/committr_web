@@ -11,7 +11,6 @@ import '../services/log_service.dart';
 import '../widgets/weight_oath_widget.dart';
 import '../widgets/reduce_screen_time_oath_widget.dart';
 import '../widgets/wake_up_early_oath_widget.dart';
-import '../services/server_time_service.dart';
 
 class OathScreen extends StatefulWidget {
   final String userId;
@@ -215,30 +214,6 @@ class _OathScreenState extends State<OathScreen> {
             });
 
             try {
-              // Fetch Server Time
-              DateTime serverTimeUtc = await ServerTimeService.getServerTime();
-
-              // Capture Local Time
-              DateTime localTime = DateTime.now();
-
-              // Calculate Time Difference (serverTime - localTime)
-              Duration timeDifference = serverTimeUtc.difference(localTime);
-              int timeDifferenceMillis = timeDifference.inMilliseconds;
-
-              // Sanity Check
-              if (timeDifferenceMillis.abs() > 43200000) {
-                // +/-12 hours
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text(
-                          'Time difference is too large. Please ensure your device clock is accurate.')),
-                );
-                setState(() {
-                  _isLoading = false;
-                });
-                return;
-              }
-
               String? imageUrl = await _uploadImage(imageBytes);
               if (imageUrl == null) {
                 setState(() {
@@ -302,36 +277,12 @@ class _OathScreenState extends State<OathScreen> {
       case ChallengeType.ReduceScreenTime:
         return ReduceScreenTimeOathWidget(
           isLoading: _isLoading,
-          onSubmit: (Uint8List imageBytes) async {
+          onSubmit: (Uint8List imageBytes, String dailyUsage) async {
             setState(() {
               _isLoading = true;
             });
 
             try {
-              // Fetch Server Time
-              DateTime serverTimeUtc = await ServerTimeService.getServerTime();
-
-              // Capture Local Time
-              DateTime localTime = DateTime.now();
-
-              // Calculate Time Difference (serverTime - localTime)
-              Duration timeDifference = serverTimeUtc.difference(localTime);
-              int timeDifferenceMillis = timeDifference.inMilliseconds;
-
-              // Sanity Check
-              if (timeDifferenceMillis.abs() > 43200000) {
-                // +/-12 hours
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text(
-                          'Time difference is too large. Please ensure your device clock is accurate.')),
-                );
-                setState(() {
-                  _isLoading = false;
-                });
-                return;
-              }
-
               String? imageUrl = await _uploadImage(imageBytes);
               if (imageUrl == null) {
                 setState(() {
@@ -348,6 +299,7 @@ class _OathScreenState extends State<OathScreen> {
               Map<String, dynamic> dataToUpdate = {
                 'IsOathTaken': true,
                 'ChallengeData': {
+                  'dailyUsage': dailyUsage,
                   'oathImageUrl': imageUrl,
                 },
               };
