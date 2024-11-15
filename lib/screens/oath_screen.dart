@@ -6,6 +6,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../constants/constants.dart';
 import '../models/challenge.dart';
+import '../services/firebase_analytics_service.dart';
 import '../utils/challenge_helper.dart';
 import '../services/log_service.dart';
 import '../widgets/weight_oath_widget.dart';
@@ -34,6 +35,11 @@ class _OathScreenState extends State<OathScreen> {
   @override
   void initState() {
     super.initState();
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'oath_screen',
+      action: 'open',
+    );
     _fetchChallenge();
   }
 

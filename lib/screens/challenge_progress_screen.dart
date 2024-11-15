@@ -8,6 +8,7 @@ import '../constants/constants.dart';
 import '../providers/challenge_provider.dart';
 import '../models/challenge.dart';
 import '../models/user_challenge_detail.dart';
+import '../services/firebase_analytics_service.dart';
 import '../services/server_time_service.dart';
 import '../utils/challenge_helper.dart';
 import '../services/log_service.dart';
@@ -38,6 +39,11 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
   @override
   void initState() {
     super.initState();
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'challenge_progress_screen',
+      action: 'open',
+    );
     _challengeType =
         ChallengeHelper.getChallengeType(widget.challenge.challengeTitle);
     _fetchServerTime();
@@ -153,7 +159,7 @@ class _ChallengeProgressScreenState extends State<ChallengeProgressScreen> {
   Widget _buildCircleIconButton(
       BuildContext context, IconData icon, VoidCallback onPressed) {
     return Container(
-      padding: const EdgeInsets.all(1.0),
+      padding: const EdgeInsets.all(0.0),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.mainFGColor, width: 2),

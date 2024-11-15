@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="$FLUTTER_BASE_HREF">
+  <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="Committr" content="Track. Commit. Achieve.">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,10 +16,17 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>committr_web</title>
+  <title>Committr</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Add the Firebase scripts if necessary -->
+    <script type="module" defer>
+    // Import the necessary Firebase modules
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js';
+    import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js';
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js';
+    import { getDatabase } from 'https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js';
+  </script>
+  
   <!-- These are typically included via your Flutter build process -->
 </head>
 <body>

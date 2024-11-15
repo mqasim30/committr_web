@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/challenge.dart';
+import '../services/firebase_analytics_service.dart';
 import '../services/select_pledge_service.dart';
 import '../widgets/loading_overlay.dart';
 import '../constants/constants.dart';
@@ -29,6 +30,11 @@ class _PledgeAmountSelectionScreenState
   @override
   void initState() {
     super.initState();
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'pledge_amount_selection_screen',
+      action: 'open',
+    );
     selectedPledgeAmount = 55.0; // Pre-select the popular option
   }
 

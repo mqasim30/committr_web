@@ -9,7 +9,8 @@ class AvailableChallengesSection extends StatefulWidget {
   final List<Challenge> availableChallenges;
 
   const AvailableChallengesSection(
-      {super.key, required this.availableChallenges});
+      {Key? key, required this.availableChallenges})
+      : super(key: key);
 
   @override
   _AvailableChallengesSectionState createState() =>
@@ -112,7 +113,7 @@ class _AvailableChallengesSectionState
                 crossAxisCount: crossAxisCount,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: 1.7,
+                childAspectRatio: 1.5, // Adjusted to make the card taller
               ),
               itemCount: widget.availableChallenges.length,
               itemBuilder: (context, index) {
@@ -149,22 +150,22 @@ class _AvailableChallengesSectionState
                         double cardHeight = constraints.maxHeight;
 
                         // Define font sizes based on card height
-                        double titleFontSize = cardHeight * 0.1;
-                        double subTitleFontSize = cardHeight * 0.1;
-                        double smallFontSize = cardHeight * 0.08;
+                        double titleFontSize = cardHeight * 0.09;
+                        double subTitleFontSize = cardHeight * 0.08;
+                        double smallFontSize = cardHeight * 0.07;
                         double bottomFontSize = cardHeight * 0.07;
 
                         // Ensure font sizes are within reasonable bounds
-                        titleFontSize = titleFontSize.clamp(16.0, 24.0);
-                        subTitleFontSize = subTitleFontSize.clamp(14.0, 20.0);
-                        smallFontSize = smallFontSize.clamp(12.0, 16.0);
-                        bottomFontSize = bottomFontSize.clamp(12.0, 16.0);
+                        titleFontSize = titleFontSize.clamp(14.0, 22.0);
+                        subTitleFontSize = subTitleFontSize.clamp(12.0, 18.0);
+                        smallFontSize = smallFontSize.clamp(10.0, 16.0);
+                        bottomFontSize = bottomFontSize.clamp(10.0, 16.0);
 
                         return Column(
                           children: [
                             // Top Header with Title and Button
                             Container(
-                              height: cardHeight * 0.25, // 20% of card height
+                              height: cardHeight * 0.25, // 25% of card height
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 8),
                               child: Row(
@@ -264,23 +265,39 @@ class _AvailableChallengesSectionState
                                 ],
                               ),
                             ),
-                            // Bottom Header with Countdown Timer
-                            SizedBox(
-                              height: cardHeight * 0.25, // 25% of card height
+                            // Bottom Section with Profile Pictures and Countdown
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
                               child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    '${challenge.challengeNumberParticipants} members participated today',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: smallFontSize,
-                                      color: const Color(0xFF083400),
+                                  // Profile Pictures Row
+                                  SizedBox(
+                                    height:
+                                        cardHeight * 0.25, // Adjust as needed
+                                    child: _buildProfilePicturesRow(challenge
+                                        .participantsProfilePictureUrl),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // "Members participated today" Text
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    child: Text(
+                                      '${challenge.challengeNumberParticipants} members participated today',
+                                      maxLines: 2,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: smallFontSize,
+                                        color: const Color(0xFF083400),
+                                      ),
                                     ),
                                   ),
+                                  const SizedBox(height: 2),
+                                  // Countdown Text
                                   Text(
                                     displayText,
                                     style: TextStyle(
@@ -304,6 +321,37 @@ class _AvailableChallengesSectionState
           },
         ),
       ],
+    );
+  }
+
+  // Helper method to build the profile pictures row
+  Widget _buildProfilePicturesRow(List<String> urls) {
+    // Limit to 5 URLs
+    List<String> displayUrls = urls.take(5).toList();
+
+    double circleRadius = 20.0;
+    double overlap = circleRadius * 1.1;
+
+    return Center(
+      child: SizedBox(
+        width: circleRadius * 2 + (displayUrls.length - 1) * overlap,
+        height: circleRadius * 2,
+        child: Stack(
+          children: displayUrls.asMap().entries.map((entry) {
+            int index = entry.key;
+            String url = entry.value;
+
+            return Positioned(
+              left: index * overlap,
+              child: CircleAvatar(
+                radius: circleRadius,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: NetworkImage(url),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 }

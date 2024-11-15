@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/challenge_provider.dart';
+import '../services/firebase_analytics_service.dart';
 import '../widgets/active_challenges_section.dart';
 import '../widgets/available_challenges_section.dart';
 import '../widgets/loading_overlay.dart';
@@ -22,6 +23,11 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'main_screen',
+      action: 'open',
+    );
     fetchData();
   }
 
@@ -68,7 +74,11 @@ class _MainScreenState extends State<MainScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final challengeProvider =
         Provider.of<ChallengeProvider>(context, listen: false);
-
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'profile_page_screen',
+      action: 'open',
+    );
     showDialog(
       context: context,
       builder: (BuildContext context) {

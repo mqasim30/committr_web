@@ -1,13 +1,12 @@
-// lib/screens/payment_status_listener.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../services/firebase_analytics_service.dart';
 import 'oath_screen.dart';
 import '../widgets/loading_overlay.dart';
 import '../services/log_service.dart';
 import '../services/user_service.dart';
 import '../models/challenge.dart';
-import '../constants/constants.dart'; // Import for AppColors and other constants
+import '../constants/constants.dart';
 
 class PaymentStatusListener extends StatefulWidget {
   final String sessionId;
@@ -35,13 +34,17 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
   @override
   void initState() {
     super.initState();
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'payment_status_screen',
+      action: 'open',
+    );
     _paymentRef =
         FirebaseDatabase.instance.ref().child('payments/${widget.sessionId}');
     LogService.info(
         "Initialized PaymentStatusListener for sessionId: ${widget.sessionId}, userId: ${widget.userId}, challengeId: ${widget.challengeId}, pledgeAmount: ${widget.pledgeAmount}");
   }
 
-  /// Fetches the Challenge object from Firebase Realtime Database
   Future<Challenge?> _getChallengeById(String challengeId) async {
     try {
       DatabaseReference challengeRef =
@@ -68,14 +71,13 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // Prevent back navigation
+      onWillPop: () async => false,
       child: Scaffold(
-        backgroundColor: Colors.white, // Set background color to white
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 16), // Spacing at the top
-              // Title moved from AppBar to body
+              const SizedBox(height: 16),
               const Center(
                 child: Text(
                   'Payment Status',
@@ -88,12 +90,11 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 16), // Additional spacing
+              const SizedBox(height: 16),
               Expanded(
                 child: StreamBuilder<DatabaseEvent>(
                   stream: _paymentRef.onValue,
                   builder: (context, snapshot) {
-                    // Handle waiting state
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       LogService.debug("Awaiting payment confirmation...");
                       return Column(
@@ -110,13 +111,12 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
                           ),
                           const SizedBox(height: 16),
                           CircularProgressIndicator(
-                            color: AppColors.mainFGColor, // Set loading color
+                            color: AppColors.mainFGColor,
                           ),
                         ],
                       );
                     }
 
-                    // Handle absence of data
                     if (!snapshot.hasData ||
                         snapshot.data!.snapshot.value == null) {
                       LogService.warning(
@@ -135,7 +135,7 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
                           ),
                           const SizedBox(height: 16),
                           CircularProgressIndicator(
-                            color: AppColors.mainFGColor, // Set loading color
+                            color: AppColors.mainFGColor,
                           ),
                         ],
                       );
@@ -155,7 +155,6 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
                             "Payment completed. Initiating challenge join process.");
 
                         WidgetsBinding.instance.addPostFrameCallback((_) async {
-                          // Fetch Challenge
                           Challenge? challenge =
                               await _getChallengeById(widget.challengeId);
 
@@ -173,7 +172,6 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
                             return;
                           }
 
-                          // Call joinChallenge with pledgeAmount
                           bool joinSuccess = await _userService.joinChallenge(
                               context,
                               widget.userId,
@@ -183,7 +181,6 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
                           if (joinSuccess) {
                             LogService.info(
                                 "Successfully joined challenge ${challenge.challengeId}");
-                            // Navigate to OathScreen upon successful join
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -217,24 +214,20 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
                         );
                       } else if (status != 'completed') {
                         LogService.info("Current payment status: $status");
-                        return Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Payment Status: $status',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 18,
-                                color: AppColors.mainFGColor,
+
+                        // Show a message and navigate back
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          Navigator.pop(context); // Navigate back
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Payment $status. Returning...',
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 16),
-                            CircularProgressIndicator(
-                              color: AppColors.mainFGColor, // Set loading color
-                            ),
-                          ],
-                        );
+                          );
+                        });
+
+                        return Container();
                       } else {
                         LogService.debug(
                             "Payment status is 'completed' but already navigated.");

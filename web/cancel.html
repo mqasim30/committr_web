@@ -16,5 +16,45 @@
 <body>
   <h1>Payment Canceled</h1>
   <p>Your payment was canceled. Please return to the site to try again.</p>
+
+  <script>
+    // Function to extract query parameters from the URL
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+
+    // Extract the session_id from the URL
+    const sessionId = getQueryParam('session_id');
+
+    if (sessionId) {
+      console.log('Started notified successfully.');
+      // Function to notify the backend about the cancellation
+      async function notifyCancellation(sessionId) {
+        try {
+          const response = await fetch('https://us-central1-challenge-app-7.cloudfunctions.net/api/notifyCancellation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sessionId }),
+          });
+
+          if (response.ok) {
+            console.log('Cancellation notified successfully.');
+          } else {
+            console.error('Failed to notify cancellation.');
+          }
+        } catch (error) {
+          console.error('Error notifying cancellation:', error);
+        }
+      }
+
+      // Call the function to notify the backend
+      notifyCancellation(sessionId);
+    } else {
+      console.warn('No session_id found in URL.');
+    }
+  </script>
 </body>
 </html>

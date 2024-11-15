@@ -15,7 +15,7 @@ class ProfilePage extends StatelessWidget {
     required this.challengesCount,
     required this.wonCount,
     required this.peopleInvitedCount,
-    required this.joinedDate, // Initialize joined date
+    required this.joinedDate,
     this.profilePictureUrl,
   });
 

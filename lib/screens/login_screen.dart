@@ -1,9 +1,11 @@
 // lib/screens/login_screen.dart
 
+import 'package:Committr/constants/constants.dart';
 import 'package:Committr/main.dart';
 import 'package:Committr/widgets/loading_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firebase_analytics_service.dart';
 import '../widgets/google_sign_in_button.dart';
 import '../services/auth_service.dart';
 import '../services/log_service.dart';
@@ -26,6 +28,11 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     LogService.info("Login screen initialized");
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'login_screen',
+      action: 'open',
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authService = Provider.of<AuthService>(context, listen: false);
       setState(() {
@@ -128,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Container(
                         constraints: BoxConstraints(maxWidth: maxTitleWidth),
                         child: AutoSizeText(
-                          'Track.\nCommit.\nAchieve.',
+                          'Healthy\nLifeStyle\nGot Rewarded.',
                           textAlign: TextAlign.left,
                           style: TextStyle(
                             fontSize: titleFontSize,
@@ -186,12 +193,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                       child: Text(
                                         'Continue with Google',
                                         style: TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: screenHeight * 0.08 * 0.35,
-                                          color: const Color.fromARGB(
-                                              255, 50, 50, 50),
-                                        ),
+                                            fontFamily: 'Poppins',
+                                            fontWeight: FontWeight.w600,
+                                            fontSize:
+                                                screenHeight * 0.08 * 0.35,
+                                            color: AppColors.mainFGColor),
                                         textAlign: TextAlign.center,
                                       ),
                                     ),

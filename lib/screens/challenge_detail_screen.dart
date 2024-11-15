@@ -1,12 +1,13 @@
 // lib/screens/challenge_detail_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../constants/challenge_constants.dart';
 import '../models/challenge.dart';
 import '../providers/challenge_provider.dart';
 import '../services/auth_service.dart';
+import '../services/firebase_analytics_service.dart';
 import '../widgets/loading_overlay.dart';
 import '../widgets/step_card.dart';
 import '../widgets/user_challenge_info_card.dart';
@@ -32,6 +33,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   @override
   void initState() {
     super.initState();
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    analyticsService.logCustomEvent(
+      screenName: 'challenge_detail_screen',
+      action: 'open',
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         isLoading = false;
@@ -82,7 +88,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
           if (isLoading) const LoadingOverlay(),
           if (!isLoading)
             SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(15.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -92,50 +98,67 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                     children: [
                       // Outlined Circle for Back Icon
                       Container(
-                        padding: const EdgeInsets.all(1.0),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: AppColors.mainFGColor, width: 2),
+                            color: AppColors.mainFGColor,
+                            width: 2,
+                          ),
                         ),
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back,
-                              color: AppColors.mainFGColor),
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
+                        width: 30.0, // Desired width for the outer circle
+                        height: 30.0, // Desired height for the outer circle
+                        child: Center(
+                          // Use Center instead of Align
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back,
+                                color: AppColors.mainFGColor),
+                            iconSize: 17.5,
+                            padding: EdgeInsets.zero, // Remove default padding
+                            constraints:
+                                const BoxConstraints(), // Remove additional constraints
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                          ),
                         ),
                       ),
 
                       // Title
                       Expanded(
                         child: Column(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center, // Center vertically
                           children: [
                             const Text(
                               'Challenge:',
                               style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 16,
-                                  color: AppColors.mainFGColor,
-                                  height: 1.2),
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w400,
+                                fontSize: 16,
+                                color: AppColors.mainFGColor,
+                                height: 1.2,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                             Text(
                               updatedChallenge.challengeTitle,
                               style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 18,
-                                  color: AppColors.mainFGColor,
-                                  height: 1.2),
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w400,
+                                fontSize: 18,
+                                color: AppColors.mainFGColor,
+                                height: 1.2,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       ),
+
+                      const SizedBox(width: 40),
                     ],
                   ),
+
                   const SizedBox(height: 16),
 
                   // Centered Card with Max Width Constraint and Increased Height

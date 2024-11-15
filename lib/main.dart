@@ -16,6 +16,7 @@ import 'screens/main_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets/loading_overlay.dart';
 import 'services/firebase_service.dart';
+import 'services/firebase_analytics_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,9 @@ Future<void> main() async {
 
   try {
     await FirebaseService.initializeFirebase();
+
+    FirebaseAnalyticsService analyticsService = FirebaseAnalyticsService();
+    await analyticsService.initialize();
 
     LogService.info("Firebase initialized successfully");
     runApp(
@@ -59,6 +63,9 @@ Future<void> main() async {
               Provider.of<UserService>(context, listen: false),
             ),
           ),
+          Provider<FirebaseAnalyticsService>(
+            create: (_) => analyticsService,
+          ),
         ],
         child: const ChallengeWebApp(),
       ),
@@ -77,6 +84,9 @@ class ChallengeWebApp extends StatelessWidget {
   Widget build(BuildContext context) {
     LogService.info("Building ChallengeWebApp");
 
+    final FirebaseAnalyticsService analyticsService =
+        Provider.of<FirebaseAnalyticsService>(context, listen: false);
+
     return MaterialApp(
       title: 'Committr',
       theme: ThemeData.light(),
@@ -89,6 +99,9 @@ class ChallengeWebApp extends StatelessWidget {
         '/main': (context) => const MainScreenWithListener(),
         // Add other routes as needed
       },
+      navigatorObservers: [
+        analyticsService.getObserver(),
+      ],
       debugShowCheckedModeBanner: false,
     );
   }
