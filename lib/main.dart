@@ -1,5 +1,6 @@
 // lib/main.dart
 
+import 'package:Committr/services/leaderboard_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
@@ -65,6 +66,9 @@ Future<void> main() async {
           ),
           Provider<FirebaseAnalyticsService>(
             create: (_) => analyticsService,
+          ),
+          Provider<LeaderboardService>(
+            create: (_) => LeaderboardService(),
           ),
         ],
         child: const ChallengeWebApp(),

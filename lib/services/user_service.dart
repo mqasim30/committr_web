@@ -248,4 +248,36 @@ class UserService {
       return false;
     }
   }
+
+  Future<bool> joinChallengeManually(
+      String userId, String challengeId, double pledgeAmount) async {
+    try {
+      DatabaseReference userChallengeRef = _database
+          .child('USER_PROFILES')
+          .child(userId)
+          .child('UserChallenges')
+          .child(challengeId);
+
+      // Create UserChallengeDetail with correct userChallengeId
+      UserChallengeDetail userChallengeDetail = UserChallengeDetail(
+        userChallengeId: challengeId, // Same as challengeId
+        userChallengePledgeAmount: pledgeAmount,
+        userChallengeStatus: 'In Progress',
+        isOathTaken: false, // Remains false until oath is submitted
+        challengeData: {}, // Initialize with empty map
+      );
+
+      // Save UserChallengeDetail
+      await userChallengeRef.set(userChallengeDetail.toMap());
+
+      LogService.info("User $userId has joined challenge ${challengeId}");
+      return true;
+    } catch (e, stackTrace) {
+      LogService.error(
+          "Failed to join challenge $challengeId for user $userId: $e",
+          e,
+          stackTrace);
+      return false;
+    }
+  }
 }

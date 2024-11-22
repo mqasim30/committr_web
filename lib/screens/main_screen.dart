@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/challenge_provider.dart';
 import '../services/firebase_analytics_service.dart';
+import '../services/user_service.dart';
 import '../widgets/active_challenges_section.dart';
 import '../widgets/available_challenges_section.dart';
 import '../widgets/loading_overlay.dart';
@@ -17,6 +18,8 @@ class MainScreen extends StatefulWidget {
   _MainScreenState createState() => _MainScreenState();
 }
 
+final UserService _userService = UserService();
+
 class _MainScreenState extends State<MainScreen> {
   bool isLoading = true;
 
@@ -30,6 +33,19 @@ class _MainScreenState extends State<MainScreen> {
     );
     fetchData();
   }
+
+  // Future<Null> addingUserManually(
+  //     String userId, String challengeId, double amount) async {
+  //   final currentUser = _userService.getCurrentUser();
+
+  //   if (currentUser != null) {
+  //     try {
+  //       await _userService.joinChallengeManually(userId, challengeId, amount);
+  //     } catch (e) {
+  //       LogService.error("Error joining challenge: $e");
+  //     }
+  //   }
+  // }
 
   /// Fetches challenges and updates the loading state accordingly.
   Future<void> fetchData() async {

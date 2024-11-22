@@ -14,14 +14,15 @@ import '../widgets/user_challenge_info_card.dart';
 import '../widgets/rules_card.dart';
 import 'pledge_amount_selection_screen.dart';
 import '../constants/constants.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final Challenge challenge;
 
   const ChallengeDetailScreen({
-    super.key,
+    Key? key,
     required this.challenge,
-  });
+  }) : super(key: key);
 
   @override
   _ChallengeDetailScreenState createState() => _ChallengeDetailScreenState();
@@ -52,6 +53,90 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
       MaterialPageRoute(
         builder: (context) =>
             PledgeAmountSelectionScreen(challenge: widget.challenge),
+      ),
+    );
+  }
+
+  // Helper method to build the profile pictures row
+  Widget _buildProfilePicturesRow(List<String> urls, int totalParticipants) {
+    // Limit to 4 URLs for profile pictures
+    List<String> displayUrls = urls.take(4).toList();
+
+    double circleRadius = 20.0;
+    double overlap = circleRadius * 1.1;
+
+    // Calculate total number of circles
+    int totalCircles = displayUrls.length;
+    bool showExtraCircle = totalParticipants > displayUrls.length;
+    if (showExtraCircle) {
+      totalCircles += 1;
+    }
+
+    double totalWidth = circleRadius * 2 + (totalCircles - 1) * overlap;
+
+    return Center(
+      child: SizedBox(
+        width: totalWidth,
+        height: circleRadius * 2,
+        child: Stack(
+          children: [
+            // Profile Picture Circles
+            for (int index = 0; index < displayUrls.length; index++)
+              Positioned(
+                left: index * overlap,
+                child: Container(
+                  width: circleRadius * 2,
+                  height: circleRadius * 2,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.mainFGColor),
+                  ),
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl:
+                          "${displayUrls[index]}?timestamp=${DateTime.now().millisecondsSinceEpoch ~/ (60 * 60 * 1000)}",
+                      // Add a timestamp that changes every hour
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.person, color: AppColors.mainFGColor),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // Extra Circle with Participant Count
+            if (showExtraCircle)
+              Positioned(
+                left: displayUrls.length * overlap,
+                child: Container(
+                  width: circleRadius * 2,
+                  height: circleRadius * 2,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white
+                        .withOpacity(0.7), // Semi-transparent background
+                    border: Border.all(color: AppColors.mainFGColor),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '+${totalParticipants - displayUrls.length}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w400,
+                        fontSize: circleRadius * 0.7,
+                        color: AppColors.mainFGColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -319,9 +404,16 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                               ),
                               const SizedBox(height: 16),
 
+                              // Profile Pictures Row
+                              _buildProfilePicturesRow(
+                                updatedChallenge.participantsProfilePictureUrl,
+                                updatedChallenge.challengeNumberParticipants,
+                              ),
+                              const SizedBox(height: 8),
+
                               // Members Committed Today Text
                               Text(
-                                "${updatedChallenge.challengeNumberParticipants}+ members joined today",
+                                "members joined today",
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w400,

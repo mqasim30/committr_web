@@ -1,16 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../constants/constants.dart';
 import '../models/challenge.dart';
 import '../screens/challenge_detail_screen.dart';
 import '../services/server_time_service.dart';
 import '../services/log_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class AvailableChallengesSection extends StatefulWidget {
   final List<Challenge> availableChallenges;
 
   const AvailableChallengesSection(
-      {Key? key, required this.availableChallenges})
-      : super(key: key);
+      {super.key, required this.availableChallenges});
 
   @override
   _AvailableChallengesSectionState createState() =>
@@ -88,7 +89,7 @@ class _AvailableChallengesSectionState
             fontFamily: 'Poppins',
             fontWeight: FontWeight.w600,
             fontSize: 20,
-            color: Color(0xFF083400),
+            color: AppColors.mainFGColor,
           ),
         ),
         const SizedBox(height: 10),
@@ -182,20 +183,20 @@ class _AvailableChallengesSectionState
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w600,
                                           fontSize: titleFontSize,
-                                          color: const Color(0xFF083400),
+                                          color: AppColors.mainFGColor,
                                         ),
                                       ),
                                     ),
                                   ),
                                   Container(
                                     decoration: const BoxDecoration(
-                                      color: Color(0xFF9FE870),
+                                      color: AppColors.mainBgColor,
                                       shape: BoxShape.circle,
                                     ),
                                     padding: const EdgeInsets.all(6),
                                     child: const Icon(
                                       Icons.arrow_outward,
-                                      color: Color(0xFF083400),
+                                      color: AppColors.mainFGColor,
                                       size: 18,
                                     ),
                                   ),
@@ -218,7 +219,7 @@ class _AvailableChallengesSectionState
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w400,
                                           fontSize: subTitleFontSize,
-                                          color: const Color(0xFF083400),
+                                          color: AppColors.mainFGColor,
                                         ),
                                       ),
                                       Text(
@@ -227,7 +228,7 @@ class _AvailableChallengesSectionState
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w400,
                                           fontSize: smallFontSize,
-                                          color: const Color(0xFF083400),
+                                          color: AppColors.mainFGColor,
                                         ),
                                       ),
                                     ],
@@ -248,7 +249,7 @@ class _AvailableChallengesSectionState
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w400,
                                           fontSize: subTitleFontSize,
-                                          color: const Color(0xFF083400),
+                                          color: AppColors.mainFGColor,
                                         ),
                                       ),
                                       Text(
@@ -257,7 +258,7 @@ class _AvailableChallengesSectionState
                                           fontFamily: 'Poppins',
                                           fontWeight: FontWeight.w400,
                                           fontSize: smallFontSize,
-                                          color: const Color(0xFF083400),
+                                          color: AppColors.mainFGColor,
                                         ),
                                       ),
                                     ],
@@ -276,8 +277,9 @@ class _AvailableChallengesSectionState
                                   SizedBox(
                                     height:
                                         cardHeight * 0.25, // Adjust as needed
-                                    child: _buildProfilePicturesRow(challenge
-                                        .participantsProfilePictureUrl),
+                                    child: _buildProfilePicturesRow(
+                                        challenge.participantsProfilePictureUrl,
+                                        challenge.challengeNumberParticipants),
                                   ),
                                   const SizedBox(height: 4),
                                   // "Members participated today" Text
@@ -285,14 +287,14 @@ class _AvailableChallengesSectionState
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8),
                                     child: Text(
-                                      '${challenge.challengeNumberParticipants} members participated today',
+                                      'members participated today',
                                       maxLines: 2,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontFamily: 'Poppins',
                                         fontWeight: FontWeight.w400,
                                         fontSize: smallFontSize,
-                                        color: const Color(0xFF083400),
+                                        color: AppColors.mainFGColor,
                                       ),
                                     ),
                                   ),
@@ -304,7 +306,7 @@ class _AvailableChallengesSectionState
                                       fontFamily: 'Poppins',
                                       fontWeight: FontWeight.w400,
                                       fontSize: bottomFontSize,
-                                      color: const Color(0xFF083400),
+                                      color: AppColors.mainFGColor,
                                     ),
                                   ),
                                 ],
@@ -324,32 +326,84 @@ class _AvailableChallengesSectionState
     );
   }
 
-  // Helper method to build the profile pictures row
-  Widget _buildProfilePicturesRow(List<String> urls) {
-    // Limit to 5 URLs
-    List<String> displayUrls = urls.take(5).toList();
+// Helper method to build the profile pictures row
+  Widget _buildProfilePicturesRow(List<String> urls, int totalParticipants) {
+    // Limit to 4 URLs for profile pictures
+    List<String> displayUrls = urls.take(4).toList();
 
     double circleRadius = 20.0;
     double overlap = circleRadius * 1.1;
 
+    // Calculate total number of circles
+    int totalCircles = displayUrls.length;
+    bool showExtraCircle = totalParticipants > displayUrls.length;
+    if (showExtraCircle) {
+      totalCircles += 1;
+    }
+
+    double totalWidth = circleRadius * 2 + (totalCircles - 1) * overlap;
+
     return Center(
       child: SizedBox(
-        width: circleRadius * 2 + (displayUrls.length - 1) * overlap,
+        width: totalWidth,
         height: circleRadius * 2,
         child: Stack(
-          children: displayUrls.asMap().entries.map((entry) {
-            int index = entry.key;
-            String url = entry.value;
-
-            return Positioned(
-              left: index * overlap,
-              child: CircleAvatar(
-                radius: circleRadius,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: NetworkImage(url),
+          children: [
+            // Profile Picture Circles
+            for (int index = 0; index < displayUrls.length; index++)
+              Positioned(
+                left: index * overlap,
+                child: Container(
+                  width: circleRadius * 2,
+                  height: circleRadius * 2,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.mainFGColor),
+                  ),
+                  child: ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl:
+                          "${displayUrls[index]}?timestamp=${DateTime.now().millisecondsSinceEpoch ~/ (60 * 60 * 1000)}",
+                      // Add a timestamp that changes every hour
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[200],
+                        child: Icon(Icons.person, color: AppColors.mainFGColor),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            );
-          }).toList(),
+            // Extra Circle with Participant Count
+            if (showExtraCircle)
+              Positioned(
+                left: displayUrls.length * overlap,
+                child: Container(
+                  width: circleRadius * 2,
+                  height: circleRadius * 2,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.5),
+                    border: Border.all(color: AppColors.mainFGColor),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '+${totalParticipants - displayUrls.length}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w400,
+                        fontSize: circleRadius * 0.7,
+                        color: AppColors.mainFGColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
