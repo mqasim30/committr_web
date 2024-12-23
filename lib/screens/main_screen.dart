@@ -10,6 +10,8 @@ import '../services/auth_service.dart';
 import '../services/log_service.dart';
 import '../models/user_profile.dart';
 import 'profile_page.dart';
+import 'leaderboard_screen.dart';
+import 'side_menu.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -33,19 +35,6 @@ class _MainScreenState extends State<MainScreen> {
     );
     fetchData();
   }
-
-  // Future<Null> addingUserManually(
-  //     String userId, String challengeId, double amount) async {
-  //   final currentUser = _userService.getCurrentUser();
-
-  //   if (currentUser != null) {
-  //     try {
-  //       await _userService.joinChallengeManually(userId, challengeId, amount);
-  //     } catch (e) {
-  //       LogService.error("Error joining challenge: $e");
-  //     }
-  //   }
-  // }
 
   /// Fetches challenges and updates the loading state accordingly.
   Future<void> fetchData() async {
@@ -163,6 +152,11 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      drawer: SideMenu(
+        userName: user?.displayName ?? "Guest",
+        profilePictureUrl: user?.photoURL,
+        tagline: "Challenge yourself, achieve greatness!",
+      ),
       body: Stack(
         children: [
           RefreshIndicator(
@@ -217,24 +211,69 @@ class _MainScreenState extends State<MainScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 40),
+
+                        //const SizedBox(width: 40),
                         // Menu Icon
-                        /*Padding(
+                        Padding(
                           padding: const EdgeInsets.only(right: 0.0),
-                          child: GestureDetector(
-                            onTap: () {
-                              // Open the menu or navigation drawer
+                          child: Builder(
+                            builder: (BuildContext context) {
+                              return GestureDetector(
+                                onTap: () => Scaffold.of(context).openDrawer(),
+                                child: const Icon(
+                                  Icons.menu,
+                                  size: 40,
+                                  color: Color(0xFF083400),
+                                ),
+                              );
                             },
-                            child: const Icon(
-                              Icons.menu,
-                              size: 40,
-                              color: Color(0xFF083400),
-                            ),
                           ),
-                        ),*/
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LeaderboardScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(
+                                0xFFf7f2fa), // Light green button color
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(25), // Rounded edges
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ), // Larger padding for a more prominent look
+                            elevation: 5, // Subtle shadow for depth
+                          ),
+                          icon: const Icon(
+                            Icons.emoji_events, // Trophy icon
+                            color: Color(0xFF083400), // Dark green for contrast
+                            size: 20,
+                          ),
+                          label: const Text(
+                            "Today's Winners",
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF083400), // Dark green text color
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
 
                     const SizedBox(height: 20),
 

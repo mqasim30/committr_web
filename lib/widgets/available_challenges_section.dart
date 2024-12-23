@@ -358,7 +358,7 @@ class _AvailableChallengesSectionState
                   height: circleRadius * 2,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.mainFGColor),
+                    border: Border.all(color: const Color(0xFFf7f2fa)),
                   ),
                   child: ClipOval(
                     child: CachedNetworkImage(
@@ -386,8 +386,8 @@ class _AvailableChallengesSectionState
                   height: circleRadius * 2,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.5),
-                    border: Border.all(color: AppColors.mainFGColor),
+                    color: Colors.white.withOpacity(1),
+                    border: Border.all(color: const Color(0xFFf7f2fa)),
                   ),
                   child: Center(
                     child: Text(
