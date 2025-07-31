@@ -47,7 +47,7 @@ class ChallengeProvider extends ChangeNotifier {
   Future<void> _fetchInitialData() async {
     LogService.info("Fetching initial challenges.");
     List<Challenge> allChallenges =
-        await _challengeService.fetchAllChallenges();
+        await _challengeService.fetchJoinableChallenges();
 
     LogService.info("Fetching initial user challenges.");
     User? currentUser = _userService.getCurrentUser();
@@ -86,7 +86,7 @@ class ChallengeProvider extends ChangeNotifier {
   /// Listens to the global challenges stream for real-time updates
   void _listenToChallenges() {
     _challengesSubscription =
-        _challengeService.getChallengesStream().listen((event) {
+        _challengeService.getJoinableChallengesStream().listen((event) {
       switch (event.type) {
         case ChallengeEventType.added:
           _handleChallengeAdded(event.challenge!);

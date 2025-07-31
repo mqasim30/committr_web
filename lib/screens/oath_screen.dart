@@ -1,4 +1,4 @@
-// lib/screens/oath_screen.dart
+// lib/screens/oath_screen.dart - SECURE VERSION
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../constants/constants.dart';
 import '../models/challenge.dart';
 import '../services/firebase_analytics_service.dart';
+import '../services/user_service.dart';
 import '../utils/challenge_helper.dart';
 import '../services/log_service.dart';
 import '../widgets/weight_oath_widget.dart';
@@ -31,6 +32,7 @@ class _OathScreenState extends State<OathScreen> {
   bool _isLoading = false;
   Challenge? _challenge;
   ChallengeType _challengeType = ChallengeType.Unknown;
+  final UserService _userService = UserService();
 
   @override
   void initState() {
@@ -62,15 +64,32 @@ class _OathScreenState extends State<OathScreen> {
       } else {
         LogService.warning(
             "Challenge with ID ${widget.challengeId} does not exist.");
+        _showErrorAndExit("Challenge not found.");
       }
     } catch (e, stackTrace) {
       LogService.error(
           "Error fetching Challenge ${widget.challengeId}: $e", e, stackTrace);
+      _showErrorAndExit("Failed to load challenge details.");
     }
+  }
+
+  void _showErrorAndExit(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/main',
+      (Route<dynamic> route) => false,
+    );
   }
 
   Future<String?> _uploadImage(Uint8List imageBytes) async {
     try {
+      // Validate file size (5MB limit)
+      if (imageBytes.length > 5 * 1024 * 1024) {
+        throw Exception('Image file too large. Maximum size is 5MB.');
+      }
+
       String fileName = 'oath_${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference storageRef = FirebaseStorage.instance
           .ref()
@@ -78,7 +97,17 @@ class _OathScreenState extends State<OathScreen> {
           .child(widget.challengeId)
           .child(fileName);
 
-      UploadTask uploadTask = storageRef.putData(imageBytes);
+      // Set metadata for additional security
+      SettableMetadata metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'uploadedBy': widget.userId,
+          'challengeId': widget.challengeId,
+          'type': 'oath',
+        },
+      );
+
+      UploadTask uploadTask = storageRef.putData(imageBytes, metadata);
 
       TaskSnapshot snapshot = await uploadTask;
       String downloadUrl = await snapshot.ref.getDownloadURL();
@@ -91,74 +120,60 @@ class _OathScreenState extends State<OathScreen> {
     }
   }
 
-  Future<void> _submitOath(
-    TimeOfDay? wakeUpTime,
-    Uint8List imageBytes,
-    int timeDifferenceMillis,
-    String deviceTimeZone,
-  ) async {
+  Future<void> _submitOath(Map<String, dynamic> oathData) async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      String? imageUrl = await _uploadImage(imageBytes);
-      if (imageUrl == null) {
+      // Validate user authorization
+      final currentUser = _userService.getCurrentUser();
+      if (currentUser == null || currentUser.uid != widget.userId) {
+        throw Exception('Unauthorized: User mismatch');
+      }
+
+      // Submit oath using secure Cloud Function
+      bool success = await _userService.submitOath(
+        challengeId: widget.challengeId,
+        oathData: oathData,
+      );
+
+      if (success) {
+        LogService.info(
+            "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
+
         setState(() {
           _isLoading = false;
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Failed to upload image. Please try again.')),
+          const SnackBar(content: Text('Oath submitted successfully!')),
         );
-        return;
+
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/main',
+          (Route<dynamic> route) => false,
+        );
+      } else {
+        throw Exception('Failed to submit oath');
+      }
+    } catch (e, stackTrace) {
+      LogService.error("Error submitting oath: $e", e, stackTrace);
+      setState(() {
+        _isLoading = false;
+      });
+
+      String userMessage = 'Failed to submit oath. Please try again.';
+      if (e.toString().contains('Unauthorized')) {
+        userMessage = 'Session expired. Please sign in again.';
+      } else if (e.toString().contains('already taken')) {
+        userMessage = 'Oath has already been submitted for this challenge.';
+      } else if (e.toString().contains('Invalid')) {
+        userMessage = 'Please check your input and try again.';
       }
 
-      Map<String, dynamic> dataToUpdate = {
-        'IsOathTaken': true,
-        'ChallengeData': {
-          if (wakeUpTime != null)
-            'wakeUpTime':
-                '${wakeUpTime.hour}:${wakeUpTime.minute.toString().padLeft(2, '0')}',
-          if (deviceTimeZone.isNotEmpty) 'deviceTimeZone': deviceTimeZone,
-          'timeDifferenceMillis': timeDifferenceMillis,
-          'oathImageUrl': imageUrl,
-          // Add other oath-related data here
-        },
-      };
-
-      DatabaseReference userChallengeRef = FirebaseDatabase.instance
-          .ref()
-          .child('USER_PROFILES')
-          .child(widget.userId)
-          .child('UserChallenges')
-          .child(widget.challengeId);
-
-      await userChallengeRef.update(dataToUpdate);
-
-      LogService.info(
-          "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
-
-      setState(() {
-        _isLoading = false;
-      });
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Oath submitted successfully!')),
-      );
-
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/main',
-        (Route<dynamic> route) => false,
-      );
-    } catch (e) {
-      LogService.error("Error submitting oath: $e");
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Failed to submit oath. Please try again.')),
+        SnackBar(content: Text(userMessage)),
       );
     }
   }
@@ -215,68 +230,20 @@ class _OathScreenState extends State<OathScreen> {
         return WeightOathWidget(
           isLoading: _isLoading,
           onSubmit: (double weight, String unit, Uint8List imageBytes) async {
-            setState(() {
-              _isLoading = true;
-            });
-
-            try {
-              String? imageUrl = await _uploadImage(imageBytes);
-              if (imageUrl == null) {
-                setState(() {
-                  _isLoading = false;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content:
-                          Text('Failed to upload image. Please try again.')),
-                );
-                return;
-              }
-
-              Map<String, dynamic> dataToUpdate = {
-                'IsOathTaken': true,
-                'ChallengeData': {
-                  'startingWeight': weight,
-                  'currentWeight': weight,
-                  'weightUnit': unit,
-                  'oathImageUrl': imageUrl,
-                },
-              };
-
-              DatabaseReference userChallengeRef = FirebaseDatabase.instance
-                  .ref()
-                  .child('USER_PROFILES')
-                  .child(widget.userId)
-                  .child('UserChallenges')
-                  .child(widget.challengeId);
-
-              await userChallengeRef.update(dataToUpdate);
-
-              LogService.info(
-                  "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
-
-              setState(() {
-                _isLoading = false;
-              });
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Oath submitted successfully!')),
-              );
-
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/main',
-                (Route<dynamic> route) => false,
-              );
-            } catch (e, stackTrace) {
-              LogService.error("Error submitting oath: $e", e, stackTrace);
-              setState(() {
-                _isLoading = false;
-              });
+            String? imageUrl = await _uploadImage(imageBytes);
+            if (imageUrl == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content: Text('Failed to submit oath. Please try again.')),
+                    content: Text('Failed to upload image. Please try again.')),
               );
+              return;
             }
+
+            await _submitOath({
+              'startingWeight': weight,
+              'weightUnit': unit,
+              'oathImageUrl': imageUrl,
+            });
           },
         );
 
@@ -284,66 +251,19 @@ class _OathScreenState extends State<OathScreen> {
         return ReduceScreenTimeOathWidget(
           isLoading: _isLoading,
           onSubmit: (Uint8List imageBytes, String dailyUsage) async {
-            setState(() {
-              _isLoading = true;
-            });
-
-            try {
-              String? imageUrl = await _uploadImage(imageBytes);
-              if (imageUrl == null) {
-                setState(() {
-                  _isLoading = false;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content:
-                          Text('Failed to upload image. Please try again.')),
-                );
-                return;
-              }
-
-              Map<String, dynamic> dataToUpdate = {
-                'IsOathTaken': true,
-                'ChallengeData': {
-                  'dailyUsage': dailyUsage,
-                  'oathImageUrl': imageUrl,
-                },
-              };
-
-              DatabaseReference userChallengeRef = FirebaseDatabase.instance
-                  .ref()
-                  .child('USER_PROFILES')
-                  .child(widget.userId)
-                  .child('UserChallenges')
-                  .child(widget.challengeId);
-
-              await userChallengeRef.update(dataToUpdate);
-
-              LogService.info(
-                  "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
-
-              setState(() {
-                _isLoading = false;
-              });
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Oath submitted successfully!')),
-              );
-
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/main',
-                (Route<dynamic> route) => false,
-              );
-            } catch (e, stackTrace) {
-              LogService.error("Error submitting oath: $e", e, stackTrace);
-              setState(() {
-                _isLoading = false;
-              });
+            String? imageUrl = await _uploadImage(imageBytes);
+            if (imageUrl == null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content: Text('Failed to submit oath. Please try again.')),
+                    content: Text('Failed to upload image. Please try again.')),
               );
+              return;
             }
+
+            await _submitOath({
+              'dailyUsage': dailyUsage,
+              'oathImageUrl': imageUrl,
+            });
           },
         );
 
@@ -351,53 +271,10 @@ class _OathScreenState extends State<OathScreen> {
         return WakeUpEarlyOathWidget(
           isLoading: _isLoading,
           onSubmit: (TimeOfDay wakeUpTime) async {
-            setState(() {
-              _isLoading = true;
+            await _submitOath({
+              'wakeUpTime':
+                  '${wakeUpTime.hour}:${wakeUpTime.minute.toString().padLeft(2, '0')}',
             });
-
-            try {
-              Map<String, dynamic> dataToUpdate = {
-                'IsOathTaken': true,
-                'ChallengeData': {
-                  'wakeUpTime':
-                      '${wakeUpTime.hour}:${wakeUpTime.minute.toString().padLeft(2, '0')}',
-                },
-              };
-
-              DatabaseReference userChallengeRef = FirebaseDatabase.instance
-                  .ref()
-                  .child('USER_PROFILES')
-                  .child(widget.userId)
-                  .child('UserChallenges')
-                  .child(widget.challengeId);
-
-              await userChallengeRef.update(dataToUpdate);
-
-              LogService.info(
-                  "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
-
-              setState(() {
-                _isLoading = false;
-              });
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Oath submitted successfully!')),
-              );
-
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/main',
-                (Route<dynamic> route) => false,
-              );
-            } catch (e, stackTrace) {
-              LogService.error("Error submitting oath: $e", e, stackTrace);
-              setState(() {
-                _isLoading = false;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Failed to submit oath. Please try again.')),
-              );
-            }
           },
         );
 

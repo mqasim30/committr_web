@@ -1,12 +1,10 @@
-// lib/services/user_service.dart
+// lib/services/user_service.dart - SECURE VERSION
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
-import '../models/challenge.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/user_challenge_detail.dart';
-import '../screens/oath_screen.dart';
 import '../services/log_service.dart';
 
 /// Represents different types of user challenge events
@@ -31,6 +29,7 @@ class UserChallengeEvent {
 class UserService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
   UserService();
 
@@ -60,21 +59,25 @@ class UserService {
         Map<dynamic, dynamic> challengesMap =
             snapshot.value as Map<dynamic, dynamic>;
         challengesMap.forEach((key, value) {
-          UserChallengeDetail detail = UserChallengeDetail.fromMap(
-              Map<String, dynamic>.from(value as Map));
+          try {
+            UserChallengeDetail detail = UserChallengeDetail.fromMap(
+                Map<String, dynamic>.from(value as Map));
 
-          // Ensure userChallengeId is set to challengeId
-          if (detail.userChallengeId.isEmpty) {
-            detail = UserChallengeDetail(
-              userChallengeId: key, // Set to challengeId
-              userChallengePledgeAmount: detail.userChallengePledgeAmount,
-              userChallengeStatus: detail.userChallengeStatus,
-              isOathTaken: detail.isOathTaken,
-              challengeData: detail.challengeData,
-            );
+            // Ensure userChallengeId is set to challengeId
+            if (detail.userChallengeId.isEmpty) {
+              detail = UserChallengeDetail(
+                userChallengeId: key, // Set to challengeId
+                userChallengePledgeAmount: detail.userChallengePledgeAmount,
+                userChallengeStatus: detail.userChallengeStatus,
+                isOathTaken: detail.isOathTaken,
+                challengeData: detail.challengeData,
+              );
+            }
+
+            userChallenges[key] = detail;
+          } catch (e) {
+            LogService.error("Error parsing user challenge $key: $e");
           }
-
-          userChallenges[key] = detail;
         });
       }
       LogService.info("Fetched ${userChallenges.length} user challenges.");
@@ -88,6 +91,12 @@ class UserService {
 
   /// Returns a stream of user challenge events for real-time updates
   Stream<UserChallengeEvent> getUserChallengesStream(String userId) {
+    // Validate userId
+    if (userId.isEmpty || getCurrentUser()?.uid != userId) {
+      LogService.error("Invalid userId for stream");
+      return Stream.empty();
+    }
+
     DatabaseReference userChallengesRef =
         _database.child('USER_PROFILES').child(userId).child('UserChallenges');
 
@@ -95,23 +104,28 @@ class UserService {
     final addedStream = userChallengesRef.onChildAdded
         .map((event) {
           if (event.snapshot.exists) {
-            Map<String, dynamic> challengeMap =
-                Map<String, dynamic>.from(event.snapshot.value as Map);
-            UserChallengeDetail detail =
-                UserChallengeDetail.fromMap(challengeMap);
+            try {
+              Map<String, dynamic> challengeMap =
+                  Map<String, dynamic>.from(event.snapshot.value as Map);
+              UserChallengeDetail detail =
+                  UserChallengeDetail.fromMap(challengeMap);
 
-            // Ensure userChallengeId is set to challengeId
-            if (detail.userChallengeId.isEmpty) {
-              detail = UserChallengeDetail(
-                userChallengeId: event.snapshot.key!, // Set to challengeId
-                userChallengePledgeAmount: detail.userChallengePledgeAmount,
-                userChallengeStatus: detail.userChallengeStatus,
-                isOathTaken: detail.isOathTaken,
-                challengeData: detail.challengeData,
-              );
+              // Ensure userChallengeId is set to challengeId
+              if (detail.userChallengeId.isEmpty) {
+                detail = UserChallengeDetail(
+                  userChallengeId: event.snapshot.key!, // Set to challengeId
+                  userChallengePledgeAmount: detail.userChallengePledgeAmount,
+                  userChallengeStatus: detail.userChallengeStatus,
+                  isOathTaken: detail.isOathTaken,
+                  challengeData: detail.challengeData,
+                );
+              }
+
+              return UserChallengeEvent.added(detail, event.snapshot.key!);
+            } catch (e) {
+              LogService.error("Error parsing added challenge: $e");
+              return null;
             }
-
-            return UserChallengeEvent.added(detail, event.snapshot.key!);
           } else {
             return null;
           }
@@ -123,23 +137,28 @@ class UserService {
     final updatedStream = userChallengesRef.onChildChanged
         .map((event) {
           if (event.snapshot.exists) {
-            Map<String, dynamic> challengeMap =
-                Map<String, dynamic>.from(event.snapshot.value as Map);
-            UserChallengeDetail detail =
-                UserChallengeDetail.fromMap(challengeMap);
+            try {
+              Map<String, dynamic> challengeMap =
+                  Map<String, dynamic>.from(event.snapshot.value as Map);
+              UserChallengeDetail detail =
+                  UserChallengeDetail.fromMap(challengeMap);
 
-            // Ensure userChallengeId is set to challengeId
-            if (detail.userChallengeId.isEmpty) {
-              detail = UserChallengeDetail(
-                userChallengeId: event.snapshot.key!, // Set to challengeId
-                userChallengePledgeAmount: detail.userChallengePledgeAmount,
-                userChallengeStatus: detail.userChallengeStatus,
-                isOathTaken: detail.isOathTaken,
-                challengeData: detail.challengeData,
-              );
+              // Ensure userChallengeId is set to challengeId
+              if (detail.userChallengeId.isEmpty) {
+                detail = UserChallengeDetail(
+                  userChallengeId: event.snapshot.key!, // Set to challengeId
+                  userChallengePledgeAmount: detail.userChallengePledgeAmount,
+                  userChallengeStatus: detail.userChallengeStatus,
+                  isOathTaken: detail.isOathTaken,
+                  challengeData: detail.challengeData,
+                );
+              }
+
+              return UserChallengeEvent.updated(detail, event.snapshot.key!);
+            } catch (e) {
+              LogService.error("Error parsing updated challenge: $e");
+              return null;
             }
-
-            return UserChallengeEvent.updated(detail, event.snapshot.key!);
           } else {
             return null;
           }
@@ -166,117 +185,76 @@ class UserService {
         [addedStream, updatedStream, removedStream]);
   }
 
-  /// Attempts to join a challenge. Returns true if successful, false otherwise.
-  Future<bool> joinChallenge(BuildContext context, String userId,
-      Challenge challenge, double pledgeAmount) async {
+  /// Submit oath using secure Cloud Function
+  Future<bool> submitOath({
+    required String challengeId,
+    required Map<String, dynamic> oathData,
+  }) async {
+    User? user = getCurrentUser();
+    if (user == null) {
+      LogService.error("No authenticated user found for oath submission");
+      return false;
+    }
+
     try {
-      DatabaseReference userChallengeRef = _database
-          .child('USER_PROFILES')
-          .child(userId)
-          .child('UserChallenges')
-          .child(challenge.challengeId);
+      // Validate inputs
+      if (challengeId.isEmpty) {
+        throw Exception('Invalid challenge ID');
+      }
 
-      // Check if the user has already joined the challenge
-      DataSnapshot existingChallenge = await userChallengeRef.get();
+      // Call secure Cloud Function
+      HttpsCallable callable = _functions.httpsCallable('submitOath');
 
-      if (existingChallenge.exists) {
-        LogService.warning(
-            "User $userId has already joined challenge ${challenge.challengeId}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('You have already joined this challenge.')),
-        );
+      final result = await callable.call({
+        'challengeId': challengeId,
+        'oathData': oathData,
+      });
+
+      if (result.data['success'] == true) {
+        LogService.info(
+            "Oath submitted successfully for challenge $challengeId");
+        return true;
+      } else {
+        LogService.error("Oath submission failed: ${result.data['message']}");
         return false;
       }
-
-      // Create UserChallengeDetail with correct userChallengeId
-      UserChallengeDetail userChallengeDetail = UserChallengeDetail(
-        userChallengeId: challenge.challengeId, // Same as challengeId
-        userChallengePledgeAmount: pledgeAmount,
-        userChallengeStatus: 'In Progress',
-        isOathTaken: false, // Remains false until oath is submitted
-        challengeData: {}, // Initialize with empty map
-      );
-
-      // Save UserChallengeDetail
-      await userChallengeRef.set(userChallengeDetail.toMap());
-
-      // Increment participant count
-      DatabaseReference challengeRef =
-          _database.child('CHALLENGES').child(challenge.challengeId);
-
-      int updatedParticipantCount = challenge.challengeNumberParticipants + 1;
-      await challengeRef
-          .child('ChallengeNumberParticipants')
-          .set(updatedParticipantCount);
-
-      // Append userId to challengeParticipantsId list
-      DatabaseReference participantsRef =
-          challengeRef.child('ChallengeParticipantsId');
-
-      DataSnapshot participantsSnapshot = await participantsRef.get();
-
-      List<dynamic> participantsList = participantsSnapshot.exists
-          ? List<dynamic>.from(participantsSnapshot.value as List<dynamic>)
-          : [];
-
-      if (!participantsList.contains(userId)) {
-        participantsList.add(userId);
-        await participantsRef.set(participantsList);
-      }
-
-      LogService.info(
-          "User $userId has joined challenge ${challenge.challengeId}");
-
-      // Navigate to Oath Screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OathScreen(
-            userId: userId,
-            challengeId: challenge.challengeId,
-          ),
-        ),
-      );
-
-      return true;
     } catch (e, stackTrace) {
-      LogService.error(
-          "Failed to join challenge ${challenge.challengeId} for user $userId: $e",
-          e,
-          stackTrace);
+      LogService.error("Error submitting oath: $e", e, stackTrace);
       return false;
     }
   }
 
-  Future<bool> joinChallengeManually(
-      String userId, String challengeId, double pledgeAmount) async {
+  /// Submit daily check-in using secure Cloud Function
+  Future<bool> submitCheckIn({required String challengeId}) async {
+    User? user = getCurrentUser();
+    if (user == null) {
+      LogService.error("No authenticated user found for check-in");
+      return false;
+    }
+
     try {
-      DatabaseReference userChallengeRef = _database
-          .child('USER_PROFILES')
-          .child(userId)
-          .child('UserChallenges')
-          .child(challengeId);
+      // Validate input
+      if (challengeId.isEmpty) {
+        throw Exception('Invalid challenge ID');
+      }
 
-      // Create UserChallengeDetail with correct userChallengeId
-      UserChallengeDetail userChallengeDetail = UserChallengeDetail(
-        userChallengeId: challengeId, // Same as challengeId
-        userChallengePledgeAmount: pledgeAmount,
-        userChallengeStatus: 'In Progress',
-        isOathTaken: false, // Remains false until oath is submitted
-        challengeData: {}, // Initialize with empty map
-      );
+      // Call secure Cloud Function
+      HttpsCallable callable = _functions.httpsCallable('submitCheckIn');
 
-      // Save UserChallengeDetail
-      await userChallengeRef.set(userChallengeDetail.toMap());
+      final result = await callable.call({
+        'challengeId': challengeId,
+      });
 
-      LogService.info("User $userId has joined challenge ${challengeId}");
-      return true;
+      if (result.data['success'] == true) {
+        LogService.info(
+            "Check-in submitted successfully for challenge $challengeId");
+        return true;
+      } else {
+        LogService.error("Check-in failed: ${result.data['message']}");
+        return false;
+      }
     } catch (e, stackTrace) {
-      LogService.error(
-          "Failed to join challenge $challengeId for user $userId: $e",
-          e,
-          stackTrace);
+      LogService.error("Error submitting check-in: $e", e, stackTrace);
       return false;
     }
   }

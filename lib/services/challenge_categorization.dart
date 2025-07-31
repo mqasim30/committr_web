@@ -15,7 +15,7 @@ class ChallengeCategorization {
   /// Returns a list of available challenges
   Future<List<Challenge>> getAvailableChallenges() async {
     List<Challenge> allChallenges =
-        await _challengeService.fetchAllChallenges();
+        await _challengeService.fetchJoinableChallenges();
     Map<String, UserChallengeDetail> userChallenges =
         await _userService.getUserChallenges();
 
@@ -33,7 +33,7 @@ class ChallengeCategorization {
   /// Returns a list of active challenges
   Future<List<Challenge>> getActiveChallenges() async {
     List<Challenge> allChallenges =
-        await _challengeService.fetchAllChallenges();
+        await _challengeService.fetchActiveChallenges();
     Map<String, UserChallengeDetail> userChallenges =
         await _userService.getUserChallenges();
 
