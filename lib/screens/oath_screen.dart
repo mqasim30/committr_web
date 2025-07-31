@@ -1,4 +1,4 @@
-// lib/screens/oath_screen.dart - SECURE VERSION
+// lib/screens/oath_screen.dart - FIXED VERSION with Immediate Loading
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +30,8 @@ class OathScreen extends StatefulWidget {
 
 class _OathScreenState extends State<OathScreen> {
   bool _isLoading = false;
+  bool _isSubmitting = false; // Track submission state separately
+  String _loadingMessage = 'Processing...'; // Dynamic loading message
   Challenge? _challenge;
   ChallengeType _challengeType = ChallengeType.Unknown;
   final UserService _userService = UserService();
@@ -83,12 +85,26 @@ class _OathScreenState extends State<OathScreen> {
     );
   }
 
+  // 🔧 FIXED: Set loading state immediately and update message
+  void _setLoadingState(bool loading, [String message = 'Processing...']) {
+    if (mounted) {
+      setState(() {
+        _isLoading = loading;
+        _isSubmitting = loading;
+        _loadingMessage = message;
+      });
+    }
+  }
+
   Future<String?> _uploadImage(Uint8List imageBytes) async {
     try {
       // Validate file size (5MB limit)
       if (imageBytes.length > 5 * 1024 * 1024) {
         throw Exception('Image file too large. Maximum size is 5MB.');
       }
+
+      // 🔧 UPDATE: Show upload progress
+      _setLoadingState(true, 'Uploading image...');
 
       String fileName = 'oath_${DateTime.now().millisecondsSinceEpoch}.jpg';
       Reference storageRef = FirebaseStorage.instance
@@ -113,17 +129,21 @@ class _OathScreenState extends State<OathScreen> {
       String downloadUrl = await snapshot.ref.getDownloadURL();
       LogService.info(
           "Image uploaded successfully. Download URL: $downloadUrl");
+
+      // Update message after successful upload
+      _setLoadingState(true, 'Submitting oath...');
+
       return downloadUrl;
     } catch (e) {
       LogService.error("Error uploading image: $e");
+      _setLoadingState(false);
       return null;
     }
   }
 
   Future<void> _submitOath(Map<String, dynamic> oathData) async {
-    setState(() {
-      _isLoading = true;
-    });
+    // 🔧 FIXED: Don't set loading here since it's already set
+    // The loading state is managed by the calling functions now
 
     try {
       // Validate user authorization
@@ -131,6 +151,9 @@ class _OathScreenState extends State<OathScreen> {
       if (currentUser == null || currentUser.uid != widget.userId) {
         throw Exception('Unauthorized: User mismatch');
       }
+
+      // Update loading message for oath submission
+      _setLoadingState(true, 'Submitting oath...');
 
       // Submit oath using secure Cloud Function
       bool success = await _userService.submitOath(
@@ -142,39 +165,43 @@ class _OathScreenState extends State<OathScreen> {
         LogService.info(
             "User ${widget.userId} has submitted oath for challenge ${widget.challengeId}");
 
-        setState(() {
-          _isLoading = false;
-        });
+        // Show success message briefly before navigation
+        _setLoadingState(true, 'Success! Redirecting...');
+        await Future.delayed(const Duration(milliseconds: 1000));
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Oath submitted successfully!')),
-        );
+        _setLoadingState(false);
 
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/main',
-          (Route<dynamic> route) => false,
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Oath submitted successfully!')),
+          );
+
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/main',
+            (Route<dynamic> route) => false,
+          );
+        }
       } else {
         throw Exception('Failed to submit oath');
       }
     } catch (e, stackTrace) {
       LogService.error("Error submitting oath: $e", e, stackTrace);
-      setState(() {
-        _isLoading = false;
-      });
+      _setLoadingState(false);
 
-      String userMessage = 'Failed to submit oath. Please try again.';
-      if (e.toString().contains('Unauthorized')) {
-        userMessage = 'Session expired. Please sign in again.';
-      } else if (e.toString().contains('already taken')) {
-        userMessage = 'Oath has already been submitted for this challenge.';
-      } else if (e.toString().contains('Invalid')) {
-        userMessage = 'Please check your input and try again.';
+      if (mounted) {
+        String userMessage = 'Failed to submit oath. Please try again.';
+        if (e.toString().contains('Unauthorized')) {
+          userMessage = 'Session expired. Please sign in again.';
+        } else if (e.toString().contains('already taken')) {
+          userMessage = 'Oath has already been submitted for this challenge.';
+        } else if (e.toString().contains('Invalid')) {
+          userMessage = 'Please check your input and try again.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(userMessage)),
+        );
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(userMessage)),
-      );
     }
   }
 
@@ -195,26 +222,57 @@ class _OathScreenState extends State<OathScreen> {
             padding: const EdgeInsets.all(16.0),
             child: _buildChallengeUI(),
           ),
-          // Close (X) Button at Top Right
+          // Close (X) Button at Top Right - Disabled during submission
           Positioned(
             top: 16,
             right: 16,
             child: IconButton(
-              icon: Icon(Icons.close, color: AppColors.mainFGColor),
-              onPressed: () {
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/main',
-                  (Route<dynamic> route) => false,
-                );
-              },
+              icon: Icon(Icons.close,
+                  color: _isSubmitting
+                      ? AppColors.mainFGColor.withOpacity(0.5)
+                      : AppColors.mainFGColor),
+              onPressed: _isSubmitting
+                  ? null
+                  : () {
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        '/main',
+                        (Route<dynamic> route) => false,
+                      );
+                    },
             ),
           ),
-          // Loading Overlay
+          // 🔧 IMPROVED: Loading Overlay with Dynamic Message
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+              color: Colors.black.withOpacity(0.7),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(color: Colors.white),
+                    const SizedBox(height: 16),
+                    Text(
+                      _loadingMessage,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    if (_loadingMessage.contains('Uploading'))
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          'This may take a few moments...',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
         ],
@@ -228,53 +286,91 @@ class _OathScreenState extends State<OathScreen> {
       case ChallengeType.Lose10Percent:
       case ChallengeType.MaintainWeight:
         return WeightOathWidget(
-          isLoading: _isLoading,
+          isLoading: _isSubmitting, // Pass submission state to widget
           onSubmit: (double weight, String unit, Uint8List imageBytes) async {
-            String? imageUrl = await _uploadImage(imageBytes);
-            if (imageUrl == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Failed to upload image. Please try again.')),
-              );
-              return;
-            }
+            // 🚀 IMMEDIATE FEEDBACK: Set loading state immediately
+            if (_isSubmitting) return; // Prevent multiple submissions
 
-            await _submitOath({
-              'startingWeight': weight,
-              'weightUnit': unit,
-              'oathImageUrl': imageUrl,
-            });
+            _setLoadingState(true, 'Preparing submission...');
+
+            try {
+              String? imageUrl = await _uploadImage(imageBytes);
+              if (imageUrl == null) {
+                _setLoadingState(false);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Failed to upload image. Please try again.')),
+                  );
+                }
+                return;
+              }
+
+              await _submitOath({
+                'startingWeight': weight,
+                'weightUnit': unit,
+                'oathImageUrl': imageUrl,
+              });
+            } catch (e) {
+              _setLoadingState(false);
+              LogService.error("Error in weight oath submission: $e");
+            }
           },
         );
 
       case ChallengeType.ReduceScreenTime:
         return ReduceScreenTimeOathWidget(
-          isLoading: _isLoading,
+          isLoading: _isSubmitting, // Pass submission state to widget
           onSubmit: (Uint8List imageBytes, String dailyUsage) async {
-            String? imageUrl = await _uploadImage(imageBytes);
-            if (imageUrl == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Failed to upload image. Please try again.')),
-              );
-              return;
-            }
+            // 🚀 IMMEDIATE FEEDBACK: Set loading state immediately
+            if (_isSubmitting) return; // Prevent multiple submissions
 
-            await _submitOath({
-              'dailyUsage': dailyUsage,
-              'oathImageUrl': imageUrl,
-            });
+            _setLoadingState(true, 'Preparing submission...');
+
+            try {
+              String? imageUrl = await _uploadImage(imageBytes);
+              if (imageUrl == null) {
+                _setLoadingState(false);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Failed to upload image. Please try again.')),
+                  );
+                }
+                return;
+              }
+
+              await _submitOath({
+                'dailyUsage': dailyUsage,
+                'oathImageUrl': imageUrl,
+              });
+            } catch (e) {
+              _setLoadingState(false);
+              LogService.error("Error in screen time oath submission: $e");
+            }
           },
         );
 
       case ChallengeType.WakeUpEarly:
         return WakeUpEarlyOathWidget(
-          isLoading: _isLoading,
+          isLoading: _isSubmitting, // Pass submission state to widget
           onSubmit: (TimeOfDay wakeUpTime) async {
-            await _submitOath({
-              'wakeUpTime':
-                  '${wakeUpTime.hour}:${wakeUpTime.minute.toString().padLeft(2, '0')}',
-            });
+            // 🚀 IMMEDIATE FEEDBACK: Set loading state immediately
+            if (_isSubmitting) return; // Prevent multiple submissions
+
+            _setLoadingState(true, 'Submitting oath...');
+
+            try {
+              await _submitOath({
+                'wakeUpTime':
+                    '${wakeUpTime.hour}:${wakeUpTime.minute.toString().padLeft(2, '0')}',
+              });
+            } catch (e) {
+              _setLoadingState(false);
+              LogService.error("Error in wake up oath submission: $e");
+            }
           },
         );
 
