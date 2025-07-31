@@ -99,6 +99,9 @@ class DatabaseService {
       'UserStatus': userProfile.userStatus,
       'Platform': userProfile.platform,
       'AmountWon': userProfile.amountWon,
+      'ClickId': userProfile.clickId != null
+          ? _sanitizeString(userProfile.clickId!, 100)
+          : null, // 🆕 Sanitize clickId if present
     };
   }
 
@@ -120,7 +123,9 @@ class DatabaseService {
       'UserName',
       'AmountWon',
       'UserInvited',
-      'UserStatus'
+      'UserStatus',
+      'UserSource',
+      'ClickId'
     };
 
     for (final entry in updates.entries) {

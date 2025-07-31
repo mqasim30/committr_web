@@ -17,7 +17,7 @@ class UserProfile {
   final String userStatus;
   final String platform;
   final double amountWon;
-  final String? clickId; // 🆕 NEW FIELD for tracking
+  final String? clickId;
 
   UserProfile({
     required this.userId,
@@ -34,7 +34,7 @@ class UserProfile {
     required this.userStatus,
     required this.platform,
     required this.amountWon,
-    this.clickId, // 🆕 Optional clickId parameter
+    required this.clickId,
   });
 
   /// Creates a [UserProfile] instance from a Map.

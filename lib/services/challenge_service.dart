@@ -33,7 +33,7 @@ class ChallengeService {
   // Cache to avoid repeated queries
   List<Challenge>? _cachedJoinableChallenges;
   DateTime? _lastCacheTime;
-  static const Duration _cacheTimeout = Duration(minutes: 5);
+  static const Duration _cacheTimeout = Duration(minutes: 15);
 
   ChallengeService();
 

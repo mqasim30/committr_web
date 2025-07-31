@@ -189,6 +189,10 @@ class AuthService {
       String? clickId = UrlParameterService
           .getClickId(); // Will return null if no clickid in URL
 
+      LogService.info("🔗 Using tracking parameters:");
+      LogService.info("🔗 UserSource: $userSource");
+      LogService.info("🔗 ClickId: $clickId");
+
       // Check if user profile already exists
       UserProfile? existingProfile =
           await _databaseService.readUserProfile(userId);
@@ -206,6 +210,19 @@ class AuthService {
           'Platform': platform,
         };
 
+        // Only override UserSource if it’s non-null/non-empty
+        if (existingProfile.userSource == "FlutterWeb" &&
+            userSource != "FlutterWeb" &&
+            userSource.isNotEmpty) {
+          updates['UserSource'] = (userSource);
+        }
+
+        // Only set a new clickId if none was ever stored
+        if (existingProfile.clickId == null &&
+            clickId != null &&
+            clickId.isNotEmpty) {
+          updates['ClickId'] = _sanitizeInput(clickId);
+        }
         // SECURITY: Validate all update values
         if (!_validateProfileUpdates(updates)) {
           LogService.error("Invalid profile update data");
@@ -305,8 +322,16 @@ class AuthService {
           if (value is! int || value < 0) return false;
           break;
         case 'Platform':
-          if (value is! String || !['Web', 'iOS', 'Android'].contains(value))
+          if (value is! String || !['Web', 'iOS', 'Android'].contains(value)) {
             return false;
+          }
+          break;
+        case 'UserSource':
+          if (value is! String || value.length > 50) return false;
+        case 'ClickId':
+          if (value != null && (value is! String || value.length > 100)) {
+            return false;
+          }
           break;
         default:
           LogService.warning("Unexpected update field: $key");
