@@ -9,6 +9,7 @@ import '../models/user_profile.dart';
 import 'ip_service.dart';
 import 'geolocation_service.dart';
 import 'server_time_service.dart';
+import 'url_parameter_service.dart'; // 🆕 Import URL parameter service
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -98,6 +99,16 @@ class AuthService {
       String country = await _geolocationService.fetchUserCountry(ip);
       String platform = "Web"; // Adjust if you have different platforms
 
+      // 🆕 Get tracking parameters from URL
+      String userSource = UrlParameterService
+          .getSource(); // Will return 'FlutterWeb' if no source in URL
+      String? clickId = UrlParameterService
+          .getClickId(); // Will return null if no clickid in URL
+
+      LogService.info("🔗 Using tracking parameters:");
+      LogService.info("🔗 UserSource: $userSource");
+      LogService.info("🔗 ClickId: $clickId");
+
       // Check if user profile already exists
       UserProfile? existingProfile =
           await _databaseService.readUserProfile(userId);
@@ -107,13 +118,23 @@ class AuthService {
       int currentTimestamp = serverTime.millisecondsSinceEpoch;
 
       if (existingProfile != null) {
-        // Prepare updates
+        // Prepare updates for existing user
         Map<String, dynamic> updates = {
           'UserIP': ip,
           'UserCountry': country,
           'UserActiveDate': currentTimestamp,
           'Platform': platform,
         };
+
+        // 🆕 Only update source/clickId if they don't exist or if we have new tracking data
+        if (existingProfile.userSource.isEmpty ||
+            existingProfile.userSource == 'FlutterWeb') {
+          updates['UserSource'] = userSource;
+        }
+
+        if (existingProfile.clickId == null && clickId != null) {
+          updates['ClickId'] = clickId;
+        }
 
         bool updateResult =
             await _databaseService.updateUserProfileAsync(userId, updates);
@@ -125,7 +146,7 @@ class AuthService {
           return false;
         }
       } else {
-        // Create a new user profile
+        // Create a new user profile with tracking parameters
         UserProfile userProfile = UserProfile(
           userId: userId,
           userName: _auth.currentUser?.displayName ?? '',
@@ -137,16 +158,18 @@ class AuthService {
           userChallenges: {},
           userInvited: 0,
           userInvitedBy: '',
-          userSource: 'FlutterWeb',
+          userSource: userSource, // 🆕 Use actual source from URL
           userStatus: 'Active',
           platform: platform,
           amountWon: 0.0,
+          clickId: clickId, // 🆕 Use clickId from URL
         );
 
         bool writeResult =
             await _databaseService.writeUserProfileAsync(userProfile);
         if (writeResult) {
-          LogService.info("User profile created successfully for $userId");
+          LogService.info(
+              "User profile created successfully for $userId with source: $userSource, clickId: $clickId");
           return true;
         } else {
           LogService.error("Failed to create user profile for $userId");

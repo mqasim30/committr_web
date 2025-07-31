@@ -48,7 +48,13 @@ class ChallengeService {
               Challenge.fromMap(Map<String, dynamic>.from(value as Map));
           allChallenges.add(challenge);
         });
-        LogService.info("Fetched ${allChallenges.length} challenges.");
+
+        // 🔄 REVERSE THE LIST to get desired order:
+        // Reduce Screen Time first, Wake Up second, Weight Loss third
+        allChallenges = allChallenges.reversed.toList();
+
+        LogService.info(
+            "Fetched ${allChallenges.length} challenges (reversed order).");
       } else {
         LogService.info("No challenges found.");
       }

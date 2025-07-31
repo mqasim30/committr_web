@@ -17,6 +17,7 @@ class UserProfile {
   final String userStatus;
   final String platform;
   final double amountWon;
+  final String? clickId; // 🆕 NEW FIELD for tracking
 
   UserProfile({
     required this.userId,
@@ -33,6 +34,7 @@ class UserProfile {
     required this.userStatus,
     required this.platform,
     required this.amountWon,
+    this.clickId, // 🆕 Optional clickId parameter
   });
 
   /// Creates a [UserProfile] instance from a Map.
@@ -61,6 +63,7 @@ class UserProfile {
       userStatus: map['UserStatus'] ?? '',
       platform: map['Platform'] ?? '',
       amountWon: (map['AmountWon'] ?? 0).toDouble(),
+      clickId: map['ClickId'], // 🆕 Extract clickId from map
     );
   }
 
@@ -72,7 +75,7 @@ class UserProfile {
       challengesMap[key] = value.toMap();
     });
 
-    return {
+    final map = {
       'UserId': userId,
       'UserName': userName,
       'UserEmail': userEmail,
@@ -88,5 +91,12 @@ class UserProfile {
       'Platform': platform,
       'AmountWon': amountWon,
     };
+
+    // 🆕 Only add ClickId if it's not null
+    if (clickId != null) {
+      map['ClickId'] = clickId!;
+    }
+
+    return map;
   }
 }

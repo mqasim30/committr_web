@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../services/firebase_analytics_service.dart';
-import 'oath_screen.dart';
-import '../widgets/loading_overlay.dart';
-import '../services/log_service.dart';
-import '../services/user_service.dart';
-import '../models/challenge.dart';
+import '../screens/oath_screen.dart';
 import '../constants/constants.dart';
+import '../services/log_service.dart';
 
 class PaymentStatusListener extends StatefulWidget {
   final String sessionId;
@@ -28,8 +25,7 @@ class PaymentStatusListener extends StatefulWidget {
 
 class _PaymentStatusListenerState extends State<PaymentStatusListener> {
   late DatabaseReference _paymentRef;
-  bool _navigated = false;
-  final UserService _userService = UserService();
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -39,222 +35,471 @@ class _PaymentStatusListenerState extends State<PaymentStatusListener> {
       screenName: 'payment_status_screen',
       action: 'open',
     );
+
     _paymentRef =
         FirebaseDatabase.instance.ref().child('payments/${widget.sessionId}');
-    LogService.info(
-        "Initialized PaymentStatusListener for sessionId: ${widget.sessionId}, userId: ${widget.userId}, challengeId: ${widget.challengeId}, pledgeAmount: ${widget.pledgeAmount}");
-  }
 
-  Future<Challenge?> _getChallengeById(String challengeId) async {
-    try {
-      DatabaseReference challengeRef =
-          FirebaseDatabase.instance.ref().child('CHALLENGES/$challengeId');
-      DataSnapshot snapshot = await challengeRef.get();
-
-      if (snapshot.exists) {
-        Map<String, dynamic> challengeMap =
-            Map<String, dynamic>.from(snapshot.value as Map);
-        Challenge challenge = Challenge.fromMap(challengeMap);
-        LogService.info("Fetched Challenge: ${challenge.challengeTitle}");
-        return challenge;
-      } else {
-        LogService.warning("Challenge with ID $challengeId does not exist.");
-        return null;
-      }
-    } catch (e, stackTrace) {
-      LogService.error(
-          "Error fetching Challenge $challengeId: $e", e, stackTrace);
-      return null;
-    }
+    LogService.info("🔥 PaymentStatusListener initialized");
+    LogService.info("🔥 Session ID: ${widget.sessionId}");
+    LogService.info("🔥 User ID: ${widget.userId}");
+    LogService.info("🔥 Challenge ID: ${widget.challengeId}");
+    LogService.info("🔥 Pledge Amount: ${widget.pledgeAmount}");
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false,
+      onWillPop: () async =>
+          false, // Prevent back navigation during payment processing
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
+          child: StreamBuilder<DatabaseEvent>(
+            stream: _paymentRef.onValue,
+            builder: (context, snapshot) {
+              LogService.info(
+                  "🔥 StreamBuilder - ConnectionState: ${snapshot.connectionState}");
+
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                LogService.info("🔥 Still waiting for payment data...");
+                return _buildWaitingScreen();
+              }
+
+              if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+                LogService.info("🔥 No payment data found yet");
+                return _buildWaitingScreen();
+              }
+
+              try {
+                Map<dynamic, dynamic> data =
+                    snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
+                String status = data['status'] ?? 'unknown';
+                String? message = data['message'];
+
+                LogService.info("🔥 PAYMENT STATUS RECEIVED: '$status'");
+                LogService.info("🔥 PAYMENT DATA: $data");
+
+                switch (status) {
+                  case 'completed':
+                    // ✅ Payment successful AND challenge joined successfully on server
+                    LogService.info(
+                        "🔥 ✅ Payment and challenge join successful!");
+                    return _buildSuccessScreen(
+                        "Payment successful! Challenge joined.");
+
+                  case 'completed_but_join_failed':
+                    // ⚠️ Payment successful BUT challenge join failed on server
+                    LogService.warning(
+                        "🔥 ⚠️ Payment successful but challenge join failed");
+                    return _buildPartialSuccessScreen(
+                        "Payment successful, but there was an issue joining the challenge. Please contact support.",
+                        message);
+
+                  case 'failed':
+                    LogService.error("🔥 ❌ Payment failed");
+                    return _buildFailureScreen(
+                        "Payment failed. Please try again.");
+
+                  case 'canceled':
+                    LogService.info("🔥 Payment was canceled");
+                    return _buildFailureScreen("Payment was canceled.");
+
+                  default:
+                    LogService.info(
+                        "🔥 Unknown status: $status, continuing to wait...");
+                    return _buildWaitingScreen();
+                }
+              } catch (e, stackTrace) {
+                LogService.error(
+                    "🔥 ❌ Error processing payment data: $e", e, stackTrace);
+                return _buildErrorScreen("Error processing payment status.");
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWaitingScreen() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        const Center(
+          child: Text(
+            'Payment Status',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppColors.mainFGColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 16),
-              const Center(
-                child: Text(
-                  'Payment Status',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.mainFGColor,
-                  ),
-                  textAlign: TextAlign.center,
+              const Text(
+                'Processing your payment...',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 16,
+                  color: AppColors.mainFGColor,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              Expanded(
-                child: StreamBuilder<DatabaseEvent>(
-                  stream: _paymentRef.onValue,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      LogService.debug("Awaiting payment confirmation...");
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Awaiting payment confirmation...',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 16,
-                              color: AppColors.mainFGColor,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          CircularProgressIndicator(
-                            color: AppColors.mainFGColor,
-                          ),
-                        ],
-                      );
-                    }
-
-                    if (!snapshot.hasData ||
-                        snapshot.data!.snapshot.value == null) {
-                      LogService.warning(
-                          "No payment data found for sessionId: ${widget.sessionId}");
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Awaiting payment confirmation...',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 16,
-                              color: AppColors.mainFGColor,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          CircularProgressIndicator(
-                            color: AppColors.mainFGColor,
-                          ),
-                        ],
-                      );
-                    }
-
-                    try {
-                      Map<dynamic, dynamic> data = snapshot.data!.snapshot.value
-                          as Map<dynamic, dynamic>;
-
-                      String status = data['status'] ?? 'unknown';
-                      LogService.info(
-                          "Payment status retrieved: $status for sessionId: ${widget.sessionId}");
-
-                      if (status == 'completed' && !_navigated) {
-                        _navigated = true;
-                        LogService.info(
-                            "Payment completed. Initiating challenge join process.");
-
-                        WidgetsBinding.instance.addPostFrameCallback((_) async {
-                          Challenge? challenge =
-                              await _getChallengeById(widget.challengeId);
-
-                          if (challenge == null) {
-                            LogService.error(
-                                "Challenge is null. Cannot join challenge.");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Failed to retrieve challenge details.')),
-                            );
-                            setState(() {
-                              _navigated = false;
-                            });
-                            return;
-                          }
-
-                          bool joinSuccess = await _userService.joinChallenge(
-                              context,
-                              widget.userId,
-                              challenge,
-                              widget.pledgeAmount);
-
-                          if (joinSuccess) {
-                            LogService.info(
-                                "Successfully joined challenge ${challenge.challengeId}");
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => OathScreen(
-                                  userId: widget.userId,
-                                  challengeId: widget.challengeId,
-                                ),
-                              ),
-                            );
-                          } else {
-                            LogService.error(
-                                "Failed to join challenge ${challenge.challengeId}");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Failed to join challenge.')),
-                            );
-                          }
-                        });
-
-                        return Center(
-                          child: Text(
-                            'Payment Successful!\nRedirecting...',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.mainFGColor,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      } else if (status != 'completed') {
-                        LogService.info("Current payment status: $status");
-
-                        // Show a message and navigate back
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.pop(context); // Navigate back
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Payment $status. Returning...',
-                              ),
-                            ),
-                          );
-                        });
-
-                        return Container();
-                      } else {
-                        LogService.debug(
-                            "Payment status is 'completed' but already navigated.");
-                        return const LoadingOverlay();
-                      }
-                    } catch (e, stackTrace) {
-                      LogService.error(
-                          "Error processing payment data: $e", e, stackTrace);
-                      return Center(
-                        child: Text(
-                          'Error retrieving payment status.',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 18,
-                            color: Colors.red,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      );
-                    }
-                  },
-                ),
+              CircularProgressIndicator(
+                color: AppColors.mainFGColor,
               ),
             ],
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildSuccessScreen(String message) {
+    // Auto-navigate to oath screen after a delay (only once)
+    if (!_hasNavigated) {
+      _hasNavigated = true;
+      Future.delayed(Duration(seconds: 3), () {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OathScreen(
+                userId: widget.userId,
+                challengeId: widget.challengeId,
+              ),
+            ),
+          );
+        }
+      });
+    }
+
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        const Center(
+          child: Text(
+            'Payment Successful!',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppColors.mainFGColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 80,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 18,
+                  color: AppColors.mainFGColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "Redirecting to oath screen...",
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              CircularProgressIndicator(
+                color: AppColors.mainBgColor,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPartialSuccessScreen(String message, String? details) {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        const Center(
+          child: Text(
+            'Payment Processed',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppColors.mainFGColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.warning,
+                  color: Colors.orange,
+                  size: 80,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    color: AppColors.mainFGColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (details != null && details.isNotEmpty) ...[
+                  const SizedBox(height: 15),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "Details: $details",
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: 200,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        '/main',
+                        (Route<dynamic> route) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.mainBgColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: const Text(
+                      'Return to Challenges',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.mainFGColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFailureScreen(String message) {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        const Center(
+          child: Text(
+            'Payment Status',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppColors.mainFGColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error,
+                  color: Colors.red,
+                  size: 80,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    color: AppColors.mainFGColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Go back to challenge detail
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.mainBgColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: const Text(
+                          'Try Again',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.mainFGColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 120,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            '/main',
+                            (Route<dynamic> route) => false,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: const Text(
+                          'Go Home',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.mainFGColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorScreen(String message) {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        const Center(
+          child: Text(
+            'Error',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.red,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 80,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 16,
+                    color: AppColors.mainFGColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: 200,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        '/main',
+                        (Route<dynamic> route) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.mainBgColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: const Text(
+                      'Return to Home',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.mainFGColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

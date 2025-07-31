@@ -389,17 +389,47 @@ class _WakeUpEarlyProgressWidgetState extends State<WakeUpEarlyProgressWidget> {
       DateTime startDateUtc, DateTime displayEndDateUtc) {
     List<Widget> checkInCards = [];
 
-    // Iterate from startDate to displayEndDate
+    // Find the earliest date to start from (either grace period start or first check-in)
+    DateTime earliestDate = startDateUtc;
+
+    // Check if there are any check-ins before the start date (grace period)
+    if (_checkInData.isNotEmpty) {
+      for (String dateKey in _checkInData.keys) {
+        try {
+          List<String> dateParts = dateKey.split('-');
+          if (dateParts.length == 3) {
+            DateTime checkInDate = DateTime.utc(
+              int.parse(dateParts[0]),
+              int.parse(dateParts[1]),
+              int.parse(dateParts[2]),
+            );
+            if (checkInDate.isBefore(earliestDate)) {
+              earliestDate = checkInDate;
+            }
+          }
+        } catch (e) {
+          LogService.error("Error parsing date key $dateKey: $e");
+        }
+      }
+    }
+
+    // Start iteration from the earliest date (grace period or challenge start)
     DateTime currentDate = DateTime.utc(
-      startDateUtc.year,
-      startDateUtc.month,
-      startDateUtc.day,
+      earliestDate.year,
+      earliestDate.month,
+      earliestDate.day,
     );
 
     DateTime displayEndDate = DateTime.utc(
       displayEndDateUtc.year,
       displayEndDateUtc.month,
       displayEndDateUtc.day,
+    );
+
+    DateTime normalizedStartDate = DateTime.utc(
+      startDateUtc.year,
+      startDateUtc.month,
+      startDateUtc.day,
     );
 
     while (!currentDate.isAfter(displayEndDate)) {
@@ -413,6 +443,9 @@ class _WakeUpEarlyProgressWidgetState extends State<WakeUpEarlyProgressWidget> {
       // Display date in 'MM/dd/yyyy' format
       String displayDate = DateFormat('MM/dd/yyyy').format(currentDate);
 
+      // Check if this date is before the challenge officially started (grace period)
+      bool isGracePeriod = currentDate.isBefore(normalizedStartDate);
+
       if (dayData != null && dayData['checkedIn'] == true) {
         DateTime checkInTime = DateTime.parse(dayData['checkInTime']);
         LogService.info("Check-In Time Retrieved: $checkInTime");
@@ -420,39 +453,57 @@ class _WakeUpEarlyProgressWidgetState extends State<WakeUpEarlyProgressWidget> {
         String formattedTime = DateFormat('h:mm a').format(checkInTime);
         LogService.info("Formatted Check-In Time: $formattedTime");
 
-        // Retrieve user's committed wake-up time
-        String? committedWakeUpTime =
-            widget.userChallengeDetail.challengeData['wakeUpTime'];
-        LogService.info(
-            "Retrieved Committed Wake-Up Time: $committedWakeUpTime");
+        String status;
+        if (isGracePeriod) {
+          // During grace period, show "Practice" or "Not Started Yet" with check-in time
+          status = 'Practice Run';
+          LogService.info("Grace period check-in for $dateKey: $status");
+        } else {
+          // Normal challenge period logic
+          String? committedWakeUpTime =
+              widget.userChallengeDetail.challengeData['wakeUpTime'];
+          LogService.info(
+              "Retrieved Committed Wake-Up Time: $committedWakeUpTime");
 
-        bool onTime = false;
-        if (committedWakeUpTime != null && committedWakeUpTime.isNotEmpty) {
-          onTime =
-              _didUserWakeUpOnTime(checkInTime, committedWakeUpTime, dateKey);
+          bool onTime = false;
+          if (committedWakeUpTime != null && committedWakeUpTime.isNotEmpty) {
+            onTime =
+                _didUserWakeUpOnTime(checkInTime, committedWakeUpTime, dateKey);
+          }
+
+          status = onTime ? 'On Time' : 'Not On Time';
+          LogService.info("Determined Status for $dateKey: $status");
         }
-
-        String status = onTime ? 'On Time' : 'Not On Time';
-        LogService.info("Determined Status for $dateKey: $status");
 
         checkInCards.add(_CheckInCard(
           date: displayDate,
           status: status,
           time: formattedTime,
+          isGracePeriod: isGracePeriod,
         ));
       } else {
-        // If the date is today and no check-in exists, do not mark as 'Missed'
+        // No check-in exists for this date
         bool isToday = currentDate.year == widget.currentDate.year &&
             currentDate.month == widget.currentDate.month &&
             currentDate.day == widget.currentDate.day;
 
         if (!isToday) {
-          LogService.info(
-              "No Check-In Found for Date Key: $dateKey. Marking as Missed.");
+          String status;
+          if (isGracePeriod) {
+            status = 'Not Started Yet';
+            LogService.info(
+                "No Check-In Found for Grace Period Date Key: $dateKey. Status: $status");
+          } else {
+            status = 'Missed';
+            LogService.info(
+                "No Check-In Found for Challenge Date Key: $dateKey. Status: $status");
+          }
+
           checkInCards.add(_CheckInCard(
             date: displayDate,
-            status: 'Missed',
+            status: status,
             time: '--:--',
+            isGracePeriod: isGracePeriod,
           ));
         } else {
           LogService.info("Date Key: $dateKey is Today. No action taken.");
@@ -487,11 +538,13 @@ class _CheckInCard extends StatelessWidget {
   final String date;
   final String status;
   final String time;
+  final bool isGracePeriod;
 
   const _CheckInCard({
     required this.date,
     required this.status,
     required this.time,
+    this.isGracePeriod = false,
   });
 
   @override
@@ -513,6 +566,14 @@ class _CheckInCard extends StatelessWidget {
         statusColor = Colors.red;
         statusIcon = Icons.cancel;
         break;
+      case 'Practice Run':
+        statusColor = Colors.blue;
+        statusIcon = Icons.fitness_center;
+        break;
+      case 'Not Started Yet':
+        statusColor = Colors.grey;
+        statusIcon = Icons.schedule;
+        break;
       default:
         statusColor = Colors.grey;
         statusIcon = Icons.help;
@@ -525,8 +586,7 @@ class _CheckInCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin:
-          const EdgeInsets.symmetric(vertical: 4), // Reduce vertical spacing
+      margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -540,14 +600,37 @@ class _CheckInCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    monthDay,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.mainFGColor,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        monthDay,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.mainFGColor,
+                        ),
+                      ),
+                      if (isGracePeriod)
+                        Container(
+                          margin: const EdgeInsets.only(left: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'GRACE',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   Text(
                     dayOfWeek,
@@ -561,17 +644,16 @@ class _CheckInCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8), // Spacing between sections
+            const SizedBox(width: 8),
 
-            // Time and Label Section with slight translation
+            // Time and Label Section
             Expanded(
               flex: 3,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Transform.translate(
-                    offset: const Offset(
-                        35.0, 0.0), // Adjust this offset to fine-tune
+                    offset: const Offset(35.0, 0.0),
                     child: Text(
                       time,
                       style: const TextStyle(
@@ -582,10 +664,14 @@ class _CheckInCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4), // Add spacing for better alignment
-                  const Text(
-                    'Your wake up time',
-                    style: TextStyle(
+                  const SizedBox(height: 4),
+                  Text(
+                    isGracePeriod && status == 'Practice Run'
+                        ? 'Practice check-in'
+                        : isGracePeriod && status == 'Not Started Yet'
+                            ? 'Grace period'
+                            : 'Your wake up time',
+                    style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14,
                       color: AppColors.mainFGColor,

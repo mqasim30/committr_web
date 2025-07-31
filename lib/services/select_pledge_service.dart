@@ -22,28 +22,25 @@ Future<bool> selectPledgeAmount(
     final String challengeId = challenge.challengeId;
 
     if (skipPayment) {
+      // Development mode - skip payment and go directly to oath
+      LogService.info("🔧 SKIP PAYMENT MODE - Going directly to oath");
       try {
-        bool joinSuccess = await _userService.joinChallenge(
-            context, userId, challenge, amount);
-
-        if (joinSuccess) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OathScreen(
-                userId: userId,
-                challengeId: challengeId,
-              ),
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OathScreen(
+              userId: userId,
+              challengeId: challengeId,
             ),
-          );
-        }
-        return joinSuccess;
+          ),
+        );
+        return true;
       } catch (e) {
-        LogService.error("Error joining challenge: $e");
+        LogService.error("Error in skip payment mode: $e");
         return false;
       }
     } else {
-      // Stripe payment flow for web-only
+      // Production mode - go through Stripe payment flow
       try {
         // Define your backend URL
         final String backendUrl =
@@ -51,8 +48,12 @@ Future<bool> selectPledgeAmount(
 
         // Convert amount to cents
         int amountInCents = (amount * 100).toInt();
-        LogService.info(
-            "User Id: $userId , Challenge Id: $challengeId , Amount: $amountInCents");
+
+        LogService.info("🎯 Creating checkout session:");
+        LogService.info("🎯 User Id: $userId");
+        LogService.info("🎯 Challenge Id: $challengeId");
+        LogService.info("🎯 Amount: $amountInCents cents");
+
         // Create Checkout Session
         final response = await http.post(
           Uri.parse(backendUrl),
@@ -69,14 +70,20 @@ Future<bool> selectPledgeAmount(
           String sessionId = data['sessionId'];
           String sessionUrl = data['sessionUrl'];
 
+          LogService.info("🎯 Checkout session created successfully:");
+          LogService.info("🎯 Session ID: $sessionId");
+          LogService.info("🎯 Session URL: $sessionUrl");
+
           // Open Stripe Checkout in a new tab
           if (await canLaunch(sessionUrl)) {
             await launch(sessionUrl);
+            LogService.info("🎯 Stripe checkout opened successfully");
           } else {
             throw 'Could not launch $sessionUrl';
           }
 
           // Navigate to PaymentStatusListener to monitor payment
+          // Note: Server will now handle challenge joining automatically
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -92,6 +99,8 @@ Future<bool> selectPledgeAmount(
           return true;
         } else {
           // Handle error response
+          LogService.error(
+              "Failed to create Checkout Session: ${response.statusCode} - ${response.body}");
           throw 'Failed to create Checkout Session: ${response.body}';
         }
       } catch (e) {
@@ -103,6 +112,7 @@ Future<bool> selectPledgeAmount(
       }
     }
   } else {
+    LogService.error("No authenticated user found");
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Please sign in to join the challenge.')),
     );

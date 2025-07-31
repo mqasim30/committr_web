@@ -212,23 +212,23 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                         ),
 
-                        //const SizedBox(width: 40),
+                        const SizedBox(width: 40),
                         // Menu Icon
-                        Padding(
-                          padding: const EdgeInsets.only(right: 0.0),
-                          child: Builder(
-                            builder: (BuildContext context) {
-                              return GestureDetector(
-                                onTap: () => Scaffold.of(context).openDrawer(),
-                                child: const Icon(
-                                  Icons.menu,
-                                  size: 40,
-                                  color: Color(0xFF083400),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                        // Padding(
+                        //   padding: const EdgeInsets.only(right: 0.0),
+                        //   child: Builder(
+                        //     builder: (BuildContext context) {
+                        //       return GestureDetector(
+                        //         onTap: () => Scaffold.of(context).openDrawer(),
+                        //         child: const Icon(
+                        //           Icons.menu,
+                        //           size: 40,
+                        //           color: Color(0xFF083400),
+                        //         ),
+                        //       );
+                        //     },
+                        //   ),
+                        // ),
                       ],
                     ),
                     const SizedBox(height: 20),
